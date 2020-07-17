@@ -1,5 +1,5 @@
 {
-	"name": "repositoryts",
+	"name": "storage",
 	"version": "0.0.5",
 	"description": "Database access through the repository pattern in Javascript/TypeScript",
 	"main": "./lib/index.js",
@@ -35,13 +35,8 @@
 		"typescript": "^3.8.3"
 	},
 	"dependencies": {
-		"@types/bcryptjs": "^2.4.2",
-		"@types/request": "^2.48.4",
 		"@types/shortid": "0.0.29",
-		"bcryptjs": "^2.4.3",
-		"lodash": "^4.17.15",
-		"pg-promise": "8.4.6",
-		"request": "^2.88.2",
-		"shortid": "^2.2.15"
+		"shortid": "^2.2.15",
+		"standard": "git+https://github.com/Hypothesize/standard.git"
 	}
 }
