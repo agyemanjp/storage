@@ -1,6 +1,6 @@
 {
 	"name": "repositoryts",
-	"version": "0.0.5",
+	"version": "0.1.0",
 	"description": "Database access through the repository pattern in Javascript/TypeScript",
 	"main": "./lib/index.js",
 	"declaration": true,
