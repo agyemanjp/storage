@@ -2,9 +2,9 @@
 	"name": "storage",
 	"version": "0.0.5",
 	"description": "Database access through the repository pattern in Javascript/TypeScript",
-	"main": "./lib/index.js",
+	"main": "./dist/index.js",
 	"declaration": true,
-	"types": "./lib/index.d.ts",
+	"types": "./dist/index.d.ts",
 	"scripts": {
 		"test": "mocha test\\",
 		"build": "tsc",

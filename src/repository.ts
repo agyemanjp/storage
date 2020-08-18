@@ -9,10 +9,11 @@ export interface RepositoryReadonly<D extends DTOsMap, E extends keyof D> {
 	getAsync(args: { parentId: string, filters?: FilterGroup<D[E]["fromStorage"]> }): Promise<D[E]["fromStorage"][]>
 }
 export interface RepositoryEditable<D extends DTOsMap, E extends keyof D> extends RepositoryReadonly<D, E> {
-	saveAsync: (obj: D[E]["toStorage"]) => Promise<D[E]["fromStorage"]>
+	saveAsync: (obj: D[E]["toStorage"][]) => Promise<D[E]["fromStorage"][]>
 }
 export interface Repository<D extends DTOsMap, E extends keyof D> extends RepositoryEditable<D, E> {
 	deleteAsync: (id: string) => Promise<void>
+	deleteManyAsync?: (args: { parentId: string } | { ids: string[] }) => Promise<void>
 }
 export type RepositoryGroup<D extends DTOsMap> = { [key in keyof D]: Repository<D, Extract<keyof D, string>> }
 
@@ -43,13 +44,18 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 				getAsync: async (selector?: { parentId?: string, filters?: FilterGroup<D[E]["fromStorage"]> }) => {
 					return this.io.getAsync({ entity: e, parentId: selector?.parentId, filters: selector?.filters })
 				},
-				saveAsync: async (obj: D[E]["toStorage"]) => {
-					return obj.id
-						? this.io.saveAsync({ entity: e, obj, mode: "update" })
-						: this.io.saveAsync({ entity: e, obj, mode: "insert" })
+				saveAsync: async (obj: D[E]["toStorage"][]) => {
+					return obj[0].id
+						? this.io.saveAsync({ entity: e, obj: obj, mode: "update" })
+						: this.io.saveAsync({ entity: e, obj: obj, mode: "insert" })
 				},
-				// updateAsync: async (obj: ToStore<E>) => this.io.saveAsync({ entity: e, obj, mode: "update" }),
-				deleteAsync: async (id: string) => this.io.deleteAsync({ entity: e, id })
+				deleteAsync: async (id: string) => this.io.deleteAsync({ entity: e, id }),
+				deleteManyAsync: async (args: { parentId: string } | { ids: string[] }) => this.io.deleteManyAsync({
+					entity: e,
+					...args["parentId"] !== undefined
+						? { parentId: args["parentId"] }
+						: { ids: args["ids"] }
+				})
 			} as Repository<D, E>
 		}
 

@@ -2,7 +2,7 @@ export type Obj<TValue = any, TKey extends string = string> = { [key in TKey]: T
 export type ExtractByType<TObj, TType> = Pick<TObj, { [k in keyof TObj]-?: TObj[k] extends TType ? k : never }[keyof TObj]>
 export type Primitive = number | string
 
-export interface Ctor<TArgs = {}, TObj = {}> { new (args: TArgs): TObj }
+export interface Ctor<TArgs = {}, TObj = {}> { new(args: TArgs): TObj }
 
 type DTO = {
 	toStorage: Object & { id?: string }
@@ -17,8 +17,13 @@ export interface IOProvider<X = {}, D extends DTOsMap = DTOsMap> {
 	/** get a set of entity objects */
 	getAsync: <E extends Extract<keyof D, string>>(args: { entity: E, parentId?: string, filters?: FilterGroup<D[E]["fromStorage"]> }) => Promise<D[E]["fromStorage"][]>
 
-	saveAsync: <E extends Extract<keyof D, string>>(args: { entity: E, obj: D[E]["toStorage"], mode: "insert" | "update" }) => Promise<D[E]["fromStorage"]>
+	saveAsync: <E extends Extract<keyof D, string>>(args: {
+		entity: E,
+		obj: D[E]["toStorage"][],
+		mode: "insert" | "update"
+	}) => Promise<D[E]["fromStorage"][]>
 	deleteAsync: <E extends Extract<keyof D, string>>(args: { entity: E, id: string }) => Promise<void>
+	deleteManyAsync?: <E extends Extract<keyof D, string>>(args: { entity: E } & { ids: string[] } | { parentId: string }) => Promise<void>
 
 	extensions: X
 }
