@@ -1,4 +1,4 @@
 import { generate, Repository, RepositoryEditable, RepositoryReadonly, RepositoryGroup } from './repository'
-import { DTOsMap, IOProvider } from './types'
+import { DTOsMap, IOProvider, CacheEntry } from './types'
 
-export { generate, IOProvider, Repository, RepositoryEditable, RepositoryReadonly, RepositoryGroup, DTOsMap }
+export { generate, IOProvider, Repository, RepositoryEditable, RepositoryReadonly, RepositoryGroup, DTOsMap, CacheEntry }

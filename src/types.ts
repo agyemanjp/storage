@@ -1,30 +1,39 @@
-export type Obj<TValue = any, TKey extends string = string> = { [key in TKey]: TValue }
-export type ExtractByType<TObj, TType> = Pick<TObj, { [k in keyof TObj]-?: TObj[k] extends TType ? k : never }[keyof TObj]>
-export type Primitive = number | string
+import { ExtractByType, Obj, Primitive, FilterGroup } from "@sparkwave/standard"
 
 export interface Ctor<TArgs = {}, TObj = {}> { new(args: TArgs): TObj }
 
 type DTO = {
-	toStorage: Object & { id?: string }
-	fromStorage: Object
+	toStorage: Obj<Primitive> & { id?: string }
+	fromStorage: Obj<Primitive>
 }
 export type DTOsMap = { [key: string]: DTO }
 
+export type CacheEntry<D extends DTOsMap> = (
+	| {
+		type: "single"
+		key: string,
+		content?: Promise<D[keyof D]["fromStorage"]>
+	}
+	| {
+		type: "multiple"
+		keys: { entity: keyof D, parentId: string, filters?: string },
+		content?: Promise<D[keyof D]["fromStorage"][]>
+	}
+)
+
 export interface IOProvider<X = {}, D extends DTOsMap = DTOsMap> {
 	/** find one entity object, throws exception if not found */
-	findAsync: <E extends Extract<keyof D, string>>(args: { entity: E, id: string }) => Promise<D[E]["fromStorage"]>
+	findAsync: <E extends keyof D>(args: { entity: E, id: string }) => Promise<D[E]["fromStorage"]>
 
 	/** get a set of entity objects */
-	getAsync: <E extends Extract<keyof D, string>>(args: { entity: E, parentId?: string, filters?: FilterGroup<D[E]["fromStorage"]> }) => Promise<D[E]["fromStorage"][]>
-
-	saveAsync: <E extends Extract<keyof D, string>>(args: {
+	getAsync: <E extends keyof D>(args: { entity: E, parentId?: string, filters?: FilterGroup<D[E]["fromStorage"]> }) => Promise<D[E]["fromStorage"][]>
+	saveAsync: <E extends keyof D>(args: {
 		entity: E,
 		obj: D[E]["toStorage"][],
 		mode: "insert" | "update"
 	}) => Promise<D[E]["fromStorage"][]>
-	deleteAsync: <E extends Extract<keyof D, string>>(args: { entity: E, id: string }) => Promise<void>
-	deleteManyAsync?: <E extends Extract<keyof D, string>>(args: { entity: E } & { ids: string[] } | { parentId: string }) => Promise<void>
-
+	deleteAsync: <E extends keyof D>(args: { entity: E, id: string }) => Promise<D[E]["fromStorage"]>
+	deleteManyAsync?: <E extends keyof D>(args: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<D[E]["fromStorage"][]>
 	extensions: X
 }
 
@@ -49,17 +58,4 @@ export namespace Filters {
 		/** number of std. deviations (possibly fractional) */
 		//value: number
 	}
-}
-type Filter<T extends Obj<Primitive> = Obj<Primitive>> = (
-	| Filters.Categorical<T>
-	| Filters.Ordinal<T>
-	| Filters.Textual<T>
-	| Filters.Statistical<T>
-)
-
-export interface FilterGroup<T extends Obj = Obj> {
-	/** combinator default is "and" */
-	combinator?: "or" | "and",
-
-	filters: (Filter<T> | FilterGroup<T>)[]
 }

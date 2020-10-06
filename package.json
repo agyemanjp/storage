@@ -35,8 +35,8 @@
 		"typescript": "^3.8.3"
 	},
 	"dependencies": {
+		"@sparkwave/standard": "^2.5.0",
 		"@types/shortid": "0.0.29",
-		"shortid": "^2.2.15",
-		"standard": "git+https://github.com/Hypothesize/standard.git"
+		"shortid": "^2.2.15"
 	}
 }
