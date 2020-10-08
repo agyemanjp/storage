@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 export type Obj<TValue = any, TKey extends string = string> = { [key in TKey]: TValue }
 export type ExtractByType<TObj, TType> = Pick<TObj, { [k in keyof TObj]-?: TObj[k] extends TType ? k : never }[keyof TObj]>
 export type Primitive = number | string

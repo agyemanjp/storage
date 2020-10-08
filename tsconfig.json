@@ -2,17 +2,32 @@
 	"compilerOptions": {
 		"target": "es2015",
 		"module": "commonjs",
+		"moduleResolution": "node",
+		"lib": [
+			"es7",
+			"es6",
+			"es5",
+			"dom",
+			"es2015.promise",
+			"scripthost",
+			"dom.iterable",
+			"esnext.asynciterable"
+		],
+		"strict": true,
+		"strictNullChecks": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
 		"declaration": true,
-		"outDir": "./dist"
+		"incremental": true,
+		"rootDirs": [
+			"./src",
+			"./test"
+		],
+		"sourceMap": true,
+		"outDir": "./dist",
 	},
-	"types": "dist/index.d.ts",
 	"include": [
-		"src",
-		"src/types/index.d.ts",
-		"src/types.d.ts"
+		"./src"
 	],
-	"exclude": [
-		"node_modules",
-		"**/__tests__/*"
-	]
+	"exclude": []
 }
