@@ -8,18 +8,20 @@ type DTO = {
 }
 export type DTOsMap = { [key: string]: DTO }
 
-export type CacheEntry<D extends DTOsMap> = (
+export type CacheEntry<M extends DTOsMap, E extends keyof M> = (
 	| {
 		type: "single"
-		key: string,
-		content?: Promise<D[keyof D]["fromStorage"]>
+		entityId: string,
+		content?: Promise<M[E]["fromStorage"]>
 	}
 	| {
 		type: "multiple"
-		keys: { entity: keyof D, parentId: string, filters?: string },
-		content?: Promise<D[keyof D]["fromStorage"][]>
+		parentEntityId: string,
+		filters?: string,
+		content?: Promise<M[E]["fromStorage"][]>
 	}
 )
+export type EntityCache<M extends DTOsMap> = { [k in keyof M]: CacheEntry<M, k>[] }
 
 export interface IOProvider<X = {}, D extends DTOsMap = DTOsMap> {
 	/** find one entity object, throws exception if not found */
