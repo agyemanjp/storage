@@ -1,6 +1,6 @@
 
 import { singular } from "pluralize"
-import { FilterGroup, Dictionary, Obj } from "@sparkwave/standard"
+import { FilterGroup, Dictionary } from "@sparkwave/standard"
 import { DTOsMap, IOProvider, Ctor, CacheEntry, EntityCache } from "./types"
 
 export interface RepositoryReadonly<D extends DTOsMap, E extends keyof D> {
@@ -51,6 +51,22 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 			Object.keys(dtoInfo).forEach(dtoName => {
 				this[dtoName] = this.createRepository({ name: dtoName as DTOIndex, parentName: dtoInfo[dtoName] as DTOIndex })
 			})
+			this.bustCache = (entityName: keyof D, entryToBust: CacheEntry<D, keyof D>) => {
+				if (this.cache) {
+					const entries = [...this.cache[entityName]]
+					this.cache[entityName].length = 0
+
+					entries.filter(entry => {
+						if (entryToBust.type === "single") {
+							return !(entry.type === "single" && entry.entityId === entryToBust.entityId)
+						}
+						else {
+							return !(entry.type === "multiple"
+								&& entry.parentEntityId === entryToBust.parentEntityId)
+						}
+					}).forEach(entry => this.cache![entityName].push(entry))
+				}
+			}
 		}
 		protected createRepository<E extends Extract<keyof D, "string">>(dto: { name: DTOIndex, parentName: DTOIndex }) {
 			return {
@@ -97,7 +113,7 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 							result.id !== undefined ? this.bustCache({ type: "single", key: result.id }) : undefined
 
 							// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
-							const effectiveParentId = dto.parentName !== "" ? result[`${dto.parentName}Id`].toString() : ""
+							const effectiveParentId = dto.parentName !== "" ? result[`${singular(dto.parentName as string)}Id`].toString() : ""
 							this.bustCache({ type: "multiple", keys: { entity: dto.name, parentId: effectiveParentId } })
 						})
 					})
@@ -120,23 +136,7 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 							? { parentId: args["parentId"] }
 							: { ids: args["ids"] }
 					})
-					: undefined,
-				bustCache: (entryToBust: CacheEntry<D, E>) => {
-					if (this.cache) {
-						const entries = [...this.cache[dto.name]]
-						this.cache[dto.name].length = 0
-
-						entries.filter(entry => {
-							if (entryToBust.type === "single") {
-								return !(entry.type === "single" && entry.entityId === entryToBust.entityId)
-							}
-							else {
-								return !(entry.type === "multiple"
-									&& entry.parentEntityId === entryToBust.parentEntityId)
-							}
-						}).forEach(entry => this.cache![dto.name].push(entry))
-					}
-				}
+					: undefined
 			} as Repository<D, E>
 		}
 
