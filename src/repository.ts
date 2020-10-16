@@ -22,10 +22,13 @@ export interface Repository<D extends DTOsMap, E extends keyof D> extends Reposi
 }
 export type RepositoryGroup<D extends DTOsMap> = {
 	[key in keyof D]: Repository<D, keyof D>
+} & {
+	bustCache: BustCache<D>
 }
 
 /** Each entity has an entry: key is the entity name, value is the entity parent's name (empty string if no parent) */
 type DTOInfo<D extends DTOsMap> = { [key in keyof D]: string }
+type BustCache<D extends DTOsMap> = (entityName: keyof D, entryToBust: CacheEntry<D, keyof D>) => void
 
 /** Generates a repository group from the io provider
  * @param ioProviderClass 
@@ -37,6 +40,7 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 		[key: string]: any
 		readonly io: Readonly<IOProvider<X>>
 		cache?: EntityCache<D>
+		bustCache: BustCache<D>
 
 		constructor(config: object, dtoInfo: { [key in keyof D]: string }, cached: boolean) {
 			try {
@@ -110,11 +114,11 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 					resultPromise.then(results => {
 						results.forEach(result => {
 							// We invalidate the findAsync cache of all entities with that id (so that updates work)
-							result.id !== undefined ? this.bustCache({ type: "single", key: result.id }) : undefined
+							result.id !== undefined ? this.bustCache(dto.name, { type: "single", entityId: result.id as string }) : undefined
 
 							// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
 							const effectiveParentId = dto.parentName !== "" ? result[`${singular(dto.parentName as string)}Id`].toString() : ""
-							this.bustCache({ type: "multiple", keys: { entity: dto.name, parentId: effectiveParentId } })
+							this.bustCache(dto.name, { type: "multiple", parentEntityId: effectiveParentId })
 						})
 					})
 					return resultPromise
@@ -122,11 +126,11 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 				deleteAsync: async (id: string) => {
 					const deletedEntity = await this.io.deleteAsync({ entity: dto.name as string, id: id })
 					// We invalidate the findAsync cache of all entities with that id (so that updates work)
-					this.bustCache({ type: "single", key: id })
+					this.bustCache(dto.name, { type: "single", entityId: id })
 
 					// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
 					const effectiveParentId = dto.parentName !== "" ? deletedEntity[`${singular(dto.parentName as string)}Id`].toString() : ""
-					this.bustCache({ type: "multiple", keys: { entity: dto.name, parentId: effectiveParentId } })
+					this.bustCache(dto.name, { type: "multiple", parentEntityId: effectiveParentId })
 					return deletedEntity
 				},
 				deleteManyAsync: async (args: { parentId: string } | { ids: string[] }) => this.io.deleteManyAsync
