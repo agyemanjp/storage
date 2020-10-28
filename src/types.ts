@@ -1,66 +1,100 @@
-/* eslint-disable @typescript-eslint/no-namespace */
-export type Obj<TValue = any, TKey extends string = string> = { [key in TKey]: TValue }
-export type ExtractByType<TObj, TType> = Pick<TObj, { [k in keyof TObj]-?: TObj[k] extends TType ? k : never }[keyof TObj]>
-export type Primitive = number | string
+/* eslint-disable @typescript-eslint/no-empty-function */
+/* eslint-disable @typescript-eslint/ban-types */
+import { Obj } from "@sparkwave/standard/utility"
+import { FilterGroup } from "@sparkwave/standard/collections/"
 
-export interface Ctor<TArgs = {}, TObj = {}> { new(args: TArgs): TObj }
+export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
-type DTO = {
-	toStorage: Object & { id?: string }
-	fromStorage: Object
-}
-export type DTOsMap = { [key: string]: DTO }
+export interface IOProvider<E extends string, X extends Obj = Obj> {
+	/** Find one entity object; throws exception if not found */
+	findAsync: <Out>(args: { entity: E, id: string }) => Promise<Out>
 
-export interface IOProvider<X = {}, D extends DTOsMap = DTOsMap> {
-	/** find one entity object, throws exception if not found */
-	findAsync: <E extends Extract<keyof D, string>>(args: { entity: E, id: string }) => Promise<D[E]["fromStorage"]>
+	/** Get a set of entity objects */
+	getAsync: <Out extends Obj>(args: { entity: E, parentId?: string, filters?: FilterGroup<Out> }) => Promise<Out[]>
 
-	/** get a set of entity objects */
-	getAsync: <E extends Extract<keyof D, string>>(args: { entity: E, parentId?: string, filters?: FilterGroup<D[E]["fromStorage"]> }) => Promise<D[E]["fromStorage"][]>
+	/** Insert or update a set of entity objects */
+	saveAsync: <In, Out>(args: { entity: E, data: In[], mode: "insert" | "update" }) => Promise<Out[]>
 
-	saveAsync: <E extends Extract<keyof D, string>>(args: {
-		entity: E,
-		obj: D[E]["toStorage"][],
-		mode: "insert" | "update"
-	}) => Promise<D[E]["fromStorage"][]>
-	deleteAsync: <E extends Extract<keyof D, string>>(args: { entity: E, id: string }) => Promise<void>
-	deleteManyAsync?: <E extends Extract<keyof D, string>>(args: { entity: E } & { ids: string[] } | { parentId: string }) => Promise<void>
+	deleteAsync: <Out>(args: { entity: E, id: string }) => Promise<Out>
+	deleteManyAsync?: <Out>(args: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<Out[]>
 
 	extensions: X
 }
 
-export namespace Filters {
-	export interface Base<TObj extends Obj<Primitive>, TVal extends Primitive | null> {
-		fieldName: keyof (ExtractByType<TObj, TVal>),
-		value: TVal,
-		negated?: boolean
-	}
-	export interface Categorical<T extends Obj<Primitive>> extends Base<T, Primitive | null> {
-		operator: "equal" | "not_equal",
-	}
-	export interface Ordinal<T extends Obj<Primitive>> extends Base<T, number> {
-		operator: "greater" | "greater_or_equal" | "less" | "less_or_equal",
-		negated?: boolean
-	}
-	export interface Textual<T extends Obj<Primitive>> extends Base<T, string> {
-		operator: "contains" | "starts_with" | "ends_with",
-	}
-	export interface Statistical<T extends Obj<Primitive>> extends Base<T, number> {
-		operator: "is_outlier_by",
-		/** number of std. deviations (possibly fractional) */
-		//value: number
-	}
-}
-type Filter<T extends Obj<Primitive> = Obj<Primitive>> = (
-	| Filters.Categorical<T>
-	| Filters.Ordinal<T>
-	| Filters.Textual<T>
-	| Filters.Statistical<T>
-)
+export interface RepositoryReadonly<Out extends Obj> {
+	/** find one entity object with a specific id, throws exception if not found */
+	findAsync(id: string): Promise<Out>
 
-export interface FilterGroup<T extends Obj = Obj> {
-	/** combinator default is "and" */
-	combinator?: "or" | "and",
+	/** get entity objects with optional parent and additional filters ... */
+	getAsync(args: { parentId: string, filters?: FilterGroup<Out> }): Promise<Out[]>
 
-	filters: (Filter<T> | FilterGroup<T>)[]
+	/** A reference to the cache of the RepositoryGroup */
+	//cache: CacheEntry<M>[]
+
+	/** A method to remove an entry from the cache */
+	//invalidateCache?(entry: CacheEntry<M>): () => void
 }
+
+export interface Repository<In extends Obj, Out extends Obj> extends RepositoryReadonly<Out> {
+	saveAsync: (data: In[], mode: "insert" | "update") => Promise<Out[]>
+	deleteAsync: (id: string) => Promise<Out>
+	deleteManyAsync?: (args: { parentId: string } | { ids: string[] }) => Promise<Out[]>
+}
+
+type PrimitiveTypeString = "string" | "number" | "boolean"
+type PrimitiveType<T extends PrimitiveTypeString> = (T extends "string" ? string : T extends "number" ? number : boolean)
+
+/** Entity specification in terms of fields. By convention, "id" field, if present, is the primary key */
+type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
+type ArrayField = "array" | { type: "array", arrayType: PrimitiveTypeString | Entity, isNullable?: boolean }
+type Field = (PrimitiveField | ArrayField)
+
+export type Entity = Obj<Field>
+export type TypeFromEntity<E extends Entity> = {
+	[k in keyof E]: E[k] extends { type: PrimitiveTypeString }
+	? PrimitiveType<E[k]["type"]>
+	: E[k] extends PrimitiveTypeString
+	? PrimitiveType<E[k]>
+	: E[k] extends "array"
+	? unknown[]
+	: E[k] extends { type: "array", arrayType: Entity, isNullable?: boolean }
+	? TypeFromEntity<E[k]["arrayType"]>[]
+	: E[k] extends { type: "array", arrayType: PrimitiveTypeString, isNullable?: boolean }
+	? PrimitiveType<E[k]["arrayType"]>[]
+	: never
+}
+
+export type Schema = Obj<{
+	/** Entity type to storage, if entity is read-write */
+	toStorage?: Entity
+	/** Entity type from storage, merged with toStorage type, if present; So no need to repeat fields from toStorage */
+	fromStorage: Entity
+}>
+
+
+export type RepositoryGroup<S extends Schema, X extends Obj = {}> = {
+	[key in keyof S]: (
+		S[key]["toStorage"] extends Entity
+		? Repository<TypeFromEntity<S[key]["toStorage"]>, TypeFromEntity<S[key]["toStorage"]> & TypeFromEntity<S[key]["fromStorage"]>>
+		: RepositoryReadonly<TypeFromEntity<S[key]["fromStorage"]>>
+	)
+} & { extensions: X }
+
+
+
+// Test
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, init-declarations, fp/no-let
+
+/*export interface IOProvider<M extends Schema, X extends Obj = Obj> {
+	// find one entity object; throws exception if not found
+	findAsync: <E extends keyof M>(args: { entity: E, id: string }) => Promise<M[E]["fromStorage"]>
+
+	// get a set of entity objects
+	getAsync: <E extends keyof M>(args: { entity: E, parentId?: string, filters?: FilterGroup<M[E]["fromStorage"]> }) => Promise<M[E]["fromStorage"][]>
+
+	saveAsync: <E extends keyof M>(args: { entity: E, obj: M[E]["toStorage"][], mode: "insert" | "update" }) => Promise<M[E]["fromStorage"][]>
+	deleteAsync: <E extends keyof M>(args: { entity: E, id: string }) => Promise<M[E]["fromStorage"]>
+	deleteManyAsync?: <E extends keyof M>(args: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<M[E]["fromStorage"][]>
+	extensions: X
+}*/

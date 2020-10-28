@@ -1,2 +1,2 @@
-export * from './repository'
+export * from './core'
 export * from './types'

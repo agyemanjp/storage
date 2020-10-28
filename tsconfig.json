@@ -3,6 +3,8 @@
 		"target": "es2015",
 		"module": "commonjs",
 		"moduleResolution": "node",
+		"traceResolution": false,
+		"declaration": true,
 		"lib": [
 			"es7",
 			"es6",
@@ -14,20 +16,14 @@
 			"esnext.asynciterable"
 		],
 		"strict": true,
+		"keyofStringsOnly": true,
 		"strictNullChecks": true,
-		"resolveJsonModule": true,
 		"skipLibCheck": true,
-		"declaration": true,
 		"incremental": true,
-		"rootDirs": [
-			"./src",
-			"./test"
-		],
-		"sourceMap": true,
-		"outDir": "./dist",
+		"outDir": "./dist"
 	},
 	"include": [
-		"./src"
+		"./src",
 	],
 	"exclude": []
 }

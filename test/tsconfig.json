@@ -2,8 +2,7 @@
 	"compilerOptions": {
 		"target": "ES2015",
 		"module": "commonjs",
-		"jsx": "react",
-		"jsxFactory": "createElement",
+		"strictNullChecks": true,
 		"strict": true
 	}
 }
