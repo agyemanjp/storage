@@ -7,16 +7,16 @@ export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
 export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 	/** Find one entity object; throws exception if not found */
-	findAsync: (_: { entity: keyof S, id: string }) => Promise<From<S, typeof _.entity>>
+	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<From<S, E>>
 
 	/** Get a set of entity objects */
-	getAsync: (_: { entity: keyof S, parentId?: string, filters?: FilterGroup<From<S, typeof _.entity>> }) => Promise<From<S, typeof _.entity>[]>
+	getAsync: <E extends keyof S>(_: { entity: E, parentId?: string, filters?: FilterGroup<From<S, E>> }) => Promise<From<S, E>[]>
 
 	/** Insert or update a set of entity objects */
-	saveAsync: (_: { entity: keyof S, data: To<S, typeof _.entity>[], mode: "insert" | "update" }) => Promise<From<S, typeof _.entity>[]>
+	saveAsync: <E extends keyof S>(_: { entity: E, data: To<S, E>[], mode: "insert" | "update" }) => Promise<From<S, E>[]>
 
-	deleteAsync: (_: { entity: keyof S, id: string }) => Promise<From<S, typeof _.entity>>
-	deleteManyAsync?: (_: { entity: keyof S } & ({ ids: string[] } | { parentId: string })) => Promise<From<S, typeof _.entity>[]>
+	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<From<S, E>>
+	deleteManyAsync?: <E extends keyof S>(_: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<From<S, E>[]>
 
 	extensions: X
 }
