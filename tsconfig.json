@@ -16,6 +16,7 @@
 			"esnext.asynciterable"
 		],
 		"strict": true,
+		"keyofStringsOnly": true,
 		"strictNullChecks": true,
 		"skipLibCheck": true,
 		"incremental": true,

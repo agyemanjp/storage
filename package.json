@@ -1,44 +1,59 @@
 {
-	"name": "storage",
-	"version": "0.0.5",
-	"description": "Database access through the repository pattern in Javascript/TypeScript",
-	"main": "./dist/index.js",
+	"name": "@sparkwave/storage",
+	"version": "0.2.0",
+	"description": "Datasource access through the repository pattern in Javascript/TypeScript",
 	"declaration": true,
-	"types": "./dist/index.d.ts",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist/*",
+		"!dist/*.tsbuildinfo"
+	],
 	"scripts": {
-		"test": "mocha test\\",
-		"build": "tsc",
-		"prepare": "tsc"
+		"setup": "rm -rf ./node_modules package-lock.json && npm install",
+		"clean": "rm -rf dist/* .eslintcache *-report.json",
+		"lint": "eslint --ext ts --cache src/*",
+		"lint-report": "eslint --ext ts --output-file .lint-report.json --format json-standard --cache src/*",
+		"compile": "tsc",
+		"test": "mocha --require ts-node/register test/*.test.*",
+		"test-report": "mocha --require ts-node/register test/*.test.* --reporter mocha-reporter-json-standard >| .test-report.json",
+		"build": "npm run clean && npm run lint && npm run compile && npm run test"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/Hypothesize/repository.ts.git"
+		"url": "git+https://github.com/Hypothesize/storage.js.git"
 	},
 	"keywords": [
 		"repository",
+		"database",
 		"postgres",
-		"hypothesize",
-		"database"
+		"api",
+		"ORM"
 	],
 	"author": "",
-	"license": "ISC",
+	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/Hypothesize/repository.ts/issues"
+		"url": "https://github.com/Hypothesize/storage.js/issues"
 	},
-	"homepage": "https://github.com/Hypothesize/repository.ts#readme",
+	"homepage": "https://github.com/Hypothesize/storage.js#readme",
 	"devDependencies": {
-		"@types/assert": "^1.4.6",
-		"@types/lodash": "^4.14.150",
+		"@types/eslint": "^7.2.0",
 		"@types/mocha": "^7.0.2",
-		"assert": "^2.0.0",
+		"@types/node": "^14.0.4",
+		"@types/request": "^2.48.5",
+		"@types/shortid": "0.0.29",
+		"@types/source-map-support": "^0.5.1",
+		"@typescript-eslint/eslint-plugin": "3.4.0",
+		"@typescript-eslint/parser": "3.4.0",
+		"eslint": "^7.3.1",
+		"eslint-plugin-fp": "2.3.0",
 		"mocha": "^7.1.1",
-		"typescript": "^3.8.3"
+		"source-map-support": "^0.5.19",
+		"ts-node": "^8.10.2",
+		"typescript": "^3.9.3"
 	},
 	"dependencies": {
-		"@sparkwave/standard": "^2.6.0",
-		"@types/pluralize": "0.0.29",
-		"@types/shortid": "0.0.29",
-		"pluralize": "^8.0.0",
+		"@sparkwave/standard": "^2.16.0",
 		"shortid": "^2.2.15"
 	}
 }

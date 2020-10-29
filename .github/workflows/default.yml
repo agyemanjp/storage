@@ -2,9 +2,7 @@ name: Default
 
 on:
   push:
-  #   branches: [ dev ]
   pull_request:
-  # branches: [ dev ]
     types: ['synchronize']
 
 jobs:
@@ -25,22 +23,22 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-
+        
       - name: Install
-        run: npm ci --no-audit --prefer-offline
+        run: npm ci --no-audit --prefer-offline 
         
       - name: Build
-        run: npm run compile --if-present
+        run: npm run build --if-present
         
-      - name: Run Lint Check
+      - name: Run Lint
         run: npm run lint-report
         continue-on-error: true
-        
-      - name: Run Test Check
+
+      - name: Run Test
         run: npm run test-report
         continue-on-error: true
          
-      - name: Annotate code checks
+      - name: Annotate Code Checks Results
         uses: agyemanjp/ci-checks-action@2.0.2
         with:
           ghToken: "${{ secrets.GITHUB_TOKEN }}"
