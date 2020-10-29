@@ -8,7 +8,7 @@ import { keys, fromKeyValues as objFromKeyValues } from "@sparkwave/standard/col
 
 import {
 	EntityCache,
-	ToStorage, FromStorage,
+	To, From,
 	Schema, IOProvider,
 	Repository, RepositoryReadonly, RepositoryGroup
 } from "./types"
@@ -19,7 +19,7 @@ import {
  * @param repos The individual repositories: tables, users...
  */
 export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
-	{ ioProvider: (cfg: Cfg) => IOProvider<ToStorage<S, keyof S>, FromStorage<S, keyof S>, X>, schema: S }): (cfg: Cfg) => RepositoryGroup<S, X> {
+	{ ioProvider: (cfg: Cfg) => IOProvider<S, X>, schema: S }): (cfg: Cfg) => RepositoryGroup<S, X> {
 
 	return (config: Cfg) => {
 		const cache: EntityCache<S> = objFromKeyValues(keys(args.schema).map(e => new Tuple(e, ({
@@ -46,7 +46,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 						}
 					},
 
-					getAsync: async (selector: { parentId?: string, filters?: FilterGroup<FromStorage<S, E>> }) => {
+					getAsync: async (selector: { parentId?: string, filters?: FilterGroup<From<S, E>> }) => {
 						if (hasValue(cache) && hasValue(cache[e])) {
 							const cacheIndex = (selector.parentId || "") + "|" + JSON.stringify(selector.filters)
 							if (!hasValue(cache[e].collections[cacheIndex])) {
@@ -71,10 +71,10 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 
 					...("toStorage" in args.schema[e] ?
 						{
-							saveAsync: async (obj: S[E]["toStorage"][], mode: "insert" | "update") => {
+							saveAsync: async (data: To<S, E>[], mode: "insert" | "update") => {
 								return mode === "update"
-									? io.saveAsync({ entity: e, data: obj, mode: "update" })
-									: io.saveAsync({ entity: e, data: obj, mode: "insert" })
+									? io.saveAsync({ entity: e, data: data, mode: "update" })
+									: io.saveAsync({ entity: e, data: data, mode: "insert" })
 							},
 
 							deleteAsync: async (id: string) => io.deleteAsync({ entity: e, id: id }),
@@ -92,9 +92,9 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 						}
 					)
 
-				} as ToStorage<S, E> extends never
-					? RepositoryReadonly<FromStorage<S, E>>
-					: Repository<ToStorage<S, E>, FromStorage<S, E>>
+				} as To<S, E> extends never
+					? RepositoryReadonly<From<S, E>>
+					: Repository<To<S, E>, From<S, E>>
 			}
 
 			const r: RepositoryGroup<S, X> = {

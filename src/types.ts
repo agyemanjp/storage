@@ -5,18 +5,18 @@ import { FilterGroup } from "@sparkwave/standard/collections/"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
-export interface IOProvider<In extends Obj | undefined = undefined, Out extends Obj = Obj, X extends Obj = Obj> {
+export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 	/** Find one entity object; throws exception if not found */
-	findAsync: (args: { entity: string, id: string }) => Promise<Out>
+	findAsync: (_: { entity: keyof S, id: string }) => Promise<From<S, typeof _.entity>>
 
 	/** Get a set of entity objects */
-	getAsync: (args: { entity: string, parentId?: string, filters?: FilterGroup<Out> }) => Promise<Out[]>
+	getAsync: (_: { entity: keyof S, parentId?: string, filters?: FilterGroup<From<S, typeof _.entity>> }) => Promise<From<S, typeof _.entity>[]>
 
 	/** Insert or update a set of entity objects */
-	saveAsync: <In, Out>(args: { entity: string, data: In[], mode: "insert" | "update" }) => Promise<Out[]>
+	saveAsync: (_: { entity: keyof S, data: To<S, typeof _.entity>[], mode: "insert" | "update" }) => Promise<From<S, typeof _.entity>[]>
 
-	deleteAsync: <Out>(args: { entity: string, id: string }) => Promise<Out>
-	deleteManyAsync?: <Out>(args: { entity: string } & ({ ids: string[] } | { parentId: string })) => Promise<Out[]>
+	deleteAsync: (_: { entity: keyof S, id: string }) => Promise<From<S, typeof _.entity>>
+	deleteManyAsync?: (_: { entity: keyof S } & ({ ids: string[] } | { parentId: string })) => Promise<From<S, typeof _.entity>[]>
 
 	extensions: X
 }
@@ -72,14 +72,14 @@ export type Schema = Obj<{
 	fromStorage: Entity
 }>
 
-export type ToStorage<S extends Schema, E extends keyof S> = TypeFromEntity<S[E]["toStorage"]>
-export type FromStorage<S extends Schema, E extends keyof S> = ToStorage<S, E> & TypeFromEntity<S[E]["fromStorage"]>
+export type To<S extends Schema, E extends keyof S> = TypeFromEntity<S[E]["toStorage"]>
+export type From<S extends Schema, E extends keyof S> = To<S, E> & TypeFromEntity<S[E]["fromStorage"]>
 
 export type RepositoryGroup<S extends Schema, X extends Obj = {}> = {
 	[key in keyof S]: (
-		ToStorage<S, key> extends never
-		? RepositoryReadonly<FromStorage<S, key>>
-		: Repository<ToStorage<S, key>, FromStorage<S, key>>
+		To<S, key> extends never
+		? RepositoryReadonly<From<S, key>>
+		: Repository<To<S, key>, From<S, key>>
 	)
 } & {
 	/** A method to remove an entry from the cache */
