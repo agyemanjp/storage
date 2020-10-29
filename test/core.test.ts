@@ -6,7 +6,7 @@
 
 import * as assert from "assert"
 import { Schema } from "../dist/types"
-import { generateRepositoryGroup } from "../dist/core"
+import { repositoryGroupFactory } from "../dist/core"
 
 describe('generateRepositoryFactory', () => {
 	it("should work", () => {
@@ -76,7 +76,7 @@ describe('generateRepositoryFactory', () => {
 		} as const
 		const _schema: Schema = schema
 
-		const repoFactory = generateRepositoryGroup({
+		const repoFactory = repositoryGroupFactory({
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			ioProvider: (args: { baseUrl: string }) => ({
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any

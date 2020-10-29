@@ -4,11 +4,11 @@
 
 import { Obj, Tuple, hasValue } from "@sparkwave/standard/utility"
 import { FilterGroup } from "@sparkwave/standard/collections/containers/table"
-import { keys, mapObject, fromKeyValues as objFromKeyValues } from "@sparkwave/standard/collections/object"
+import { keys, fromKeyValues as objFromKeyValues } from "@sparkwave/standard/collections/object"
 
 import {
 	EntityCache,
-	TypeFromEntity, Entity,
+	ToStorage, FromStorage,
 	Schema, IOProvider,
 	Repository, RepositoryReadonly, RepositoryGroup
 } from "./types"
@@ -18,8 +18,8 @@ import {
  * @param ioProviderClass 
  * @param repos The individual repositories: tables, users...
  */
-export function generateRepositoryGroup<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
-	{ ioProvider: (cf: Cfg) => IOProvider<keyof S, X>, schema: S }): (config: Cfg) => RepositoryGroup<S, X> {
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
+	{ ioProvider: (cfg: Cfg) => IOProvider<ToStorage<S, keyof S>, FromStorage<S, keyof S>, X>, schema: S }): (cfg: Cfg) => RepositoryGroup<S, X> {
 
 	return (config: Cfg) => {
 		const cache: EntityCache<S> = objFromKeyValues(keys(args.schema).map(e => new Tuple(e, ({
@@ -32,11 +32,6 @@ export function generateRepositoryGroup<S extends Schema, Cfg extends Obj | void
 
 			// eslint-disable-next-line no-shadow
 			const makeRepository = <E extends keyof S>(e: E, cache?: EntityCache<S>) => {
-				type ToStorage = S[E]["toStorage"] extends Entity
-					? TypeFromEntity<S[E]["toStorage"]>
-					: void
-				type FromStorage = TypeFromEntity<S[E]["fromStorage"]>
-
 				return {
 					findAsync: async (id: string) => {
 						if (hasValue(cache) && hasValue(cache[e])) {
@@ -51,7 +46,7 @@ export function generateRepositoryGroup<S extends Schema, Cfg extends Obj | void
 						}
 					},
 
-					getAsync: async (selector: { parentId?: string, filters?: FilterGroup<FromStorage> }) => {
+					getAsync: async (selector: { parentId?: string, filters?: FilterGroup<FromStorage<S, E>> }) => {
 						if (hasValue(cache) && hasValue(cache[e])) {
 							const cacheIndex = (selector.parentId || "") + "|" + JSON.stringify(selector.filters)
 							if (!hasValue(cache[e].collections[cacheIndex])) {
@@ -97,12 +92,15 @@ export function generateRepositoryGroup<S extends Schema, Cfg extends Obj | void
 						}
 					)
 
-				} as S[E]["toStorage"] extends Entity ? Repository<TypeFromEntity<S[E]["toStorage"]>, FromStorage> : RepositoryReadonly<FromStorage>
+				} as ToStorage<S, E> extends never
+					? RepositoryReadonly<FromStorage<S, E>>
+					: Repository<ToStorage<S, E>, FromStorage<S, E>>
 			}
 
 			const r: RepositoryGroup<S, X> = {
 				...objFromKeyValues(keys(args.schema).map(e => new Tuple(e, makeRepository(e, cache)))),
-				invalidateCache: (entityName: keyof S, entityObjId?: string) => {
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				invalidateCache: (entityName: keyof S, key?: { objectId: string } | { parentId: string }) => {
 					// eslint-disable-next-line fp/no-mutation
 					cache[entityName] = { objects: {}, collections: {} }//[entityObjId]
 				},
@@ -115,6 +113,8 @@ export function generateRepositoryGroup<S extends Schema, Cfg extends Obj | void
 		}
 	}
 }
+
+
 
 /*
 # Cache system
