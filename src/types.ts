@@ -23,8 +23,8 @@ export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 
 export type EntityCache<S extends Schema> = {
 	[e in keyof S]: {
-		objects: Obj<Promise<TypeFromEntity<S[e]["fromStorage"]>>, string /*entityId*/>,
-		collections: Obj<Promise<TypeFromEntity<S[e]["fromStorage"]>[]>, string /* {parentEntityId, filters (as JSON)} */>,
+		objects: Obj<Promise<EntityType<S[e]["fromStorage"]>>, string /*entityId*/>,
+		collections: Obj<Promise<EntityType<S[e]["fromStorage"]>[]>, string /* {parentEntityId, filters (as JSON)} */>,
 	}
 }
 
@@ -47,21 +47,43 @@ type PrimitiveType<T extends PrimitiveTypeString> = (T extends "string" ? string
 
 /** Entity specification in terms of fields. By convention, "id" field, if present, is the primary key */
 type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
-type ArrayField = "array" | { type: "array", arrayType: PrimitiveTypeString | Entity, isNullable?: boolean }
-type Field = (PrimitiveField | ArrayField)
+type ObjectField = "object" | { type: "object", valueType: Field, isNullable?: boolean }
+type ArrayField = "array" | { type: "array", arrayType: Field, isNullable?: boolean }
+type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
+
+type PrimitiveFieldType<F extends PrimitiveField> = (F extends { type: PrimitiveTypeString, isNullable?: boolean }
+	? PrimitiveType<F["type"]>
+	: F extends PrimitiveTypeString
+	? PrimitiveType<F>
+	: never
+)
+type ObjectFieldType<F extends ObjectField> = (F extends "object"
+	? Obj
+	: F extends { type: "object", valueType: PrimitiveField, isNullable?: boolean }
+	? PrimitiveFieldType<F["valueType"]>
+	: F extends { type: "object", valueType: ArrayField, isNullable?: boolean }
+	? ArrayFieldType<F["valueType"]>
+	: F extends { type: "object", valueType: ObjectField, isNullable?: boolean }
+	? Obj<Obj>
+	: never
+)
+type ArrayFieldType<F extends ArrayField> = (F extends "array"
+	? unknown[]
+	: F extends { type: "array", arrayType: Field, isNullable?: boolean }
+	? Array<FieldType<F["arrayType"]>>
+	: never
+)
+type FieldType<F extends Field> = (
+	F extends PrimitiveField ? PrimitiveFieldType<F> :
+	F extends ObjectField ? ObjectFieldType<F> :
+	F extends ArrayField ? ArrayFieldType<F> :
+	never
+)
 
 export type Entity = Obj<Field>
-export type TypeFromEntity<E extends Entity | undefined> = {
-	[k in keyof E]: E[k] extends { type: PrimitiveTypeString }
-	? PrimitiveType<E[k]["type"]>
-	: E[k] extends PrimitiveTypeString
-	? PrimitiveType<E[k]>
-	: E[k] extends "array"
-	? unknown[]
-	: E[k] extends { type: "array", arrayType: Entity, isNullable?: boolean }
-	? TypeFromEntity<E[k]["arrayType"]>[]
-	: E[k] extends { type: "array", arrayType: PrimitiveTypeString, isNullable?: boolean }
-	? PrimitiveType<E[k]["arrayType"]>[]
+export type EntityType<E extends Entity | undefined> = {
+	[k in keyof E]: E[k] extends Field
+	? FieldType<E[k]>
 	: never
 }
 
@@ -72,8 +94,8 @@ export type Schema = Obj<{
 	fromStorage: Entity
 }>
 
-export type To<S extends Schema, E extends keyof S> = TypeFromEntity<S[E]["toStorage"]>
-export type From<S extends Schema, E extends keyof S> = To<S, E> & TypeFromEntity<S[E]["fromStorage"]>
+export type To<S extends Schema, E extends keyof S> = EntityType<S[E]["toStorage"]>
+export type From<S extends Schema, E extends keyof S> = To<S, E> & EntityType<S[E]["fromStorage"]>
 
 export type RepositoryGroup<S extends Schema, X extends Obj = {}> = {
 	[key in keyof S]: (

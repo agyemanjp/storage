@@ -5,15 +5,17 @@
 /* eslint-disable fp/no-unused-expression */
 
 import * as assert from "assert"
-import { Schema } from "../dist/types"
+import { Schema, EntityType } from "../dist/types"
 import { repositoryGroupFactory } from "../dist/core"
+import { Obj } from "@sparkwave/standard"
 
 describe('generateRepositoryFactory', () => {
-	it("should work", () => {
+	it("should work", async () => {
 
 		const schema = {
 			"analyses": {
 				toStorage: {
+					id: "string",
 					name: "string",
 					goal: { type: "string", isNullable: true },
 					variables: {
@@ -37,12 +39,12 @@ describe('generateRepositoryFactory', () => {
 					},
 					settings: "string"
 				},
-				fromStorage: {
-
-				}
+				fromStorage: {}
 			},
+
 			"tables": {
 				toStorage: {
+					id: "string",
 					name: "string",
 					projectId: "string",
 					parsedStorageUrl: "string",
@@ -55,7 +57,7 @@ describe('generateRepositoryFactory', () => {
 				}
 			},
 
-			"project": {
+			"projects": {
 				toStorage: {
 					id: "string",
 					name: "string",
@@ -72,10 +74,49 @@ describe('generateRepositoryFactory', () => {
 					},
 					userEmailAddress: "string",
 				}
+			},
+
+			"columns": {
+				fromStorage: {
+
+				},
+				toStorage: {
+					id: "string",
+					tableId: "string",
+					displayIndex: "number",
+					storageUrl: "string"
+				}
+			},
+
+			"results": {
+				fromStorage: {},
+				toStorage: {
+					name: "string",
+					description: "string",
+					content: { type: "array", arrayType: "object" },
+					initialLayout: "string",
+					displayIndex: "number"
+				}
+			},
+
+			"users": {
+				fromStorage: {},
+				toStorage: {
+					id: "string",
+					firstName: "string",
+					lastName: "string",
+					emailAddress: "string",
+					companyName: { type: "string", isNullable: true },
+					role: "string",
+					whenCreated: "number",
+					pwdHash: "string",
+					pwdSalt: "string"
+				}
 			}
 		} as const
 		const _schema: Schema = schema
 
+		type tt = EntityType<typeof schema["users"]["toStorage"]>
 		const repoFactory = repositoryGroupFactory({
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			ioProvider: (args: { baseUrl: string }) => ({
@@ -90,8 +131,9 @@ describe('generateRepositoryFactory', () => {
 			schema: schema
 		})
 
-		const repoGrp = repoFactory({ baseUrl: "" })
-		// repoGrp.analyses.getAsync({ parentId: "" }).then(x => x[0].variables[0].role)
+		// const repoGrp = repoFactory({ baseUrl: "" })
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		// const test: Obj = await repoGrp.results.getAsync({ parentId: "" }).then(x => x[0].content[0])
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		//const fn = async () => {
