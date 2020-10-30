@@ -42,8 +42,13 @@ export interface Repository<In extends Obj, Out extends Obj> extends RepositoryR
 	deleteManyAsync?: (args: { parentId: string } | { ids: string[] }) => Promise<Out[]>
 }
 
-type PrimitiveTypeString = "string" | "number" | "boolean"
-type PrimitiveType<T extends PrimitiveTypeString> = (T extends "string" ? string : T extends "number" ? number : boolean)
+type PrimitiveTypeString = "string" | "number" | "boolean" | "unknown"
+type PrimitiveType<T extends PrimitiveTypeString> = (
+	T extends "unknown" ? unknown :
+	T extends "string" ? string :
+	T extends "number" ? number
+	: boolean
+)
 
 /** Entity specification in terms of fields. By convention, "id" field, if present, is the primary key */
 type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
