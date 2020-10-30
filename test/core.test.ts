@@ -5,7 +5,7 @@
 /* eslint-disable fp/no-unused-expression */
 
 import * as assert from "assert"
-import { Schema, EntityType } from "../dist/types"
+import { Schema, EntityType, FieldType } from "../dist/types"
 import { repositoryGroupFactory } from "../dist/core"
 import { Obj } from "@sparkwave/standard"
 
@@ -116,7 +116,7 @@ describe('generateRepositoryFactory', () => {
 		} as const
 		const _schema: Schema = schema
 
-		type tt = EntityType<typeof schema["users"]["toStorage"]>
+		type tt = EntityType<typeof schema["analyses"]["toStorage"]>
 		const repoFactory = repositoryGroupFactory({
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			ioProvider: (args: { baseUrl: string }) => ({
@@ -131,9 +131,10 @@ describe('generateRepositoryFactory', () => {
 			schema: schema
 		})
 
-		// const repoGrp = repoFactory({ baseUrl: "" })
+		const repoGrp = repoFactory({ baseUrl: "" })
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		// const test: Obj = await repoGrp.results.getAsync({ parentId: "" }).then(x => x[0].content[0])
+		// const test = (await repoGrp.analyses.findAsync("")).variables[0]
+
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		//const fn = async () => {

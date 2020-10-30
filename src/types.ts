@@ -43,7 +43,7 @@ export interface Repository<In extends Obj, Out extends Obj> extends RepositoryR
 }
 
 type PrimitiveTypeString = "string" | "number" | "boolean" | "unknown"
-type PrimitiveType<T extends PrimitiveTypeString> = (
+export type PrimitiveType<T extends PrimitiveTypeString> = (
 	T extends "unknown" ? unknown :
 	T extends "string" ? string :
 	T extends "number" ? number
@@ -51,18 +51,18 @@ type PrimitiveType<T extends PrimitiveTypeString> = (
 )
 
 /** Entity specification in terms of fields. By convention, "id" field, if present, is the primary key */
-type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
-type ObjectField = "object" | { type: "object", valueType: Field, isNullable?: boolean }
-type ArrayField = "array" | { type: "array", arrayType: Field, isNullable?: boolean }
-type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
+export type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
+export type ObjectField = "object" | { type: "object", valueType: Field, isNullable?: boolean }
+export type ArrayField = "array" | { type: "array", arrayType: Field, isNullable?: boolean }
+export type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
 
-type PrimitiveFieldType<F extends PrimitiveField> = (F extends { type: PrimitiveTypeString, isNullable?: boolean }
+export type PrimitiveFieldType<F extends PrimitiveField> = (F extends { type: PrimitiveTypeString, isNullable?: boolean }
 	? PrimitiveType<F["type"]>
 	: F extends PrimitiveTypeString
 	? PrimitiveType<F>
 	: never
 )
-type ObjectFieldType<F extends ObjectField> = (F extends "object"
+export type ObjectFieldType<F extends ObjectField> = (F extends "object"
 	? Obj
 	: F extends { type: "object", valueType: PrimitiveField, isNullable?: boolean }
 	? PrimitiveFieldType<F["valueType"]>
@@ -72,16 +72,17 @@ type ObjectFieldType<F extends ObjectField> = (F extends "object"
 	? Obj<Obj>
 	: never
 )
-type ArrayFieldType<F extends ArrayField> = (F extends "array"
+export type ArrayFieldType<F extends ArrayField> = (F extends "array"
 	? unknown[]
 	: F extends { type: "array", arrayType: Field, isNullable?: boolean }
 	? Array<FieldType<F["arrayType"]>>
 	: never
 )
-type FieldType<F extends Field> = (
+export type FieldType<F extends Field> = (
 	F extends PrimitiveField ? PrimitiveFieldType<F> :
 	F extends ObjectField ? ObjectFieldType<F> :
 	F extends ArrayField ? ArrayFieldType<F> :
+	F extends Obj<PrimitiveField | ArrayField | ObjectField> ? EntityType<F> :
 	never
 )
 
