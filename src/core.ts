@@ -115,16 +115,12 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								})
 							},
 
-							deleteAsync: async (ids) => {
+							deleteAsync: async (id) => {
 								if (ioProvider) {
-									ioProvider.deleteAsync({ entity: e, ids })
+									ioProvider.deleteAsync({ entity: e, id })
 								}
 								_cache[e].vectors = {}
-								forEach(ids, (id) => {
-									// eslint-disable-next-line fp/no-delete
-									delete _cache[e].objects[String(id)]
-								})
-
+								delete _cache[e].objects[String(id)]
 							}
 						}
 

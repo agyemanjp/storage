@@ -71,7 +71,7 @@ export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 	insertAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
 	updateAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
 
-	deleteAsync: <E extends keyof S>(_: { entity: E, ids: string[] }) => Promise<void>
+	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<void>
 
 	extensions: X
 }
@@ -99,7 +99,7 @@ export interface Repository<T extends Obj & { id: string | number }> extends Rep
 	/** Delete one of more entity objects, identified by the passed ids, in underlying data source.
 	 * Throws an error if any of the ids are not found
 	 */
-	deleteAsync: (ids: string[]) => Promise<void>
+	deleteAsync: (id: string) => Promise<void>
 }
 
 export type RepositoryGroup<S extends Schema, X extends Obj | undefined = {}> = {
@@ -119,7 +119,6 @@ export type RepositoryGroup<S extends Schema, X extends Obj | undefined = {}> = 
 }
 
 type FilterKey = string | "N/A"
-type ParentObjectId = string
 type ObjectId = string
 export type EntityCacheGroup<S extends Schema> = {
 	[e in keyof S]: {
