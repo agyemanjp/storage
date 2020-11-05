@@ -7,43 +7,44 @@
 import * as assert from "assert"
 import { Schema, EntityType, FieldType } from "../dist/types"
 import { repositoryGroupFactory } from "../dist/core"
-import { Obj } from "@sparkwave/standard"
+import { Obj, TypeAssert, TypeGuard } from "@sparkwave/standard"
 
 describe('generateRepositoryFactory', () => {
 	it("should work", async () => {
 
 		const schema = {
 			"analyses": {
-				toStorage: {
+				fields: {
 					id: "string",
 					name: "string",
-					goal: { type: "string", isNullable: true },
+					goal: { type: "string", nullable: true },
 					variables: {
 						type: "array",
 						arrayType: {
+							id: "string",
 							name: "string",
 							role: "string",
 							measureLevel: "string"
 						},
-						isNullable: true
+						nullable: true
 					},
 					filters: {
 						type: "array",
 						arrayType: {
+							id: "string",
 							field: "string",
 							operation: "string",
 							value: "string",
 							negated: "boolean"
 						},
-						isNullable: true
+						nullable: true
 					},
-					settings: "string"
-				},
-				fromStorage: {}
+					settings: "unknown"
+				}
 			},
 
 			"tables": {
-				toStorage: {
+				fields: {
 					id: "string",
 					name: "string",
 					projectId: "string",
@@ -52,13 +53,11 @@ describe('generateRepositoryFactory', () => {
 					numRows: "number",
 					numColumns: "number",
 					whenCreated: "number"
-				},
-				fromStorage: {
 				}
 			},
 
 			"projects": {
-				toStorage: {
+				fields: {
 					id: "string",
 					name: "string",
 					description: "string",
@@ -66,21 +65,22 @@ describe('generateRepositoryFactory', () => {
 					isPublic: "boolean",
 					whenLastAccessed: "number",
 					whenCreated: "number"
-				},
-				fromStorage: {
+				}
+			},
+			projectCategories: {
+				fields: {
+					id: "string",
 					categories: {
 						type: "array",
 						arrayType: "string"
 					},
 					userEmailAddress: "string",
-				}
+				},
+				readonly: true
 			},
 
 			"columns": {
-				fromStorage: {
-
-				},
-				toStorage: {
+				fields: {
 					id: "string",
 					tableId: "string",
 					displayIndex: "number",
@@ -89,8 +89,8 @@ describe('generateRepositoryFactory', () => {
 			},
 
 			"results": {
-				fromStorage: {},
-				toStorage: {
+				fields: {
+					id: "string",
 					name: "string",
 					description: "string",
 					content: { type: "array", arrayType: "object" },
@@ -100,13 +100,12 @@ describe('generateRepositoryFactory', () => {
 			},
 
 			"users": {
-				fromStorage: {},
-				toStorage: {
+				fields: {
 					id: "string",
 					firstName: "string",
 					lastName: "string",
 					emailAddress: "string",
-					companyName: { type: "string", isNullable: true },
+					companyName: { type: "string", nullable: true },
 					role: "string",
 					whenCreated: "number",
 					pwdHash: "string",
@@ -114,29 +113,28 @@ describe('generateRepositoryFactory', () => {
 				}
 			}
 		} as const
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const _schema: Schema = schema
 
-		type tt = EntityType<typeof schema["analyses"]["toStorage"]>
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const repoFactory = repositoryGroupFactory({
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			ioProvider: (args: { baseUrl: string }) => ({
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				findAsync: () => { return Promise.resolve({}) as any },
+			io: (args: { baseUrl: string }) => ({
+				findAsync: () => { return Promise.resolve({} as any) },
 				getAsync: () => { return Promise.resolve([]) },
-				saveAsync: () => { return Promise.resolve([]) },
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				deleteAsync: () => { return Promise.resolve() as any },
+				insertAsync: () => { return Promise.resolve() },
+				updateAsync: () => { return Promise.resolve() },
+				deleteAsync: () => { return Promise.resolve() },
 				extensions: {}
 			}),
 			schema: schema
 		})
 
-		const repoGrp = repoFactory({ baseUrl: "" })
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		// const test = (await repoGrp.analyses.findAsync("")).variables[0]
+		// const repoGrp = repoFactory({ baseUrl: "" })
+		// const analysis = await repoGrp.analyses.findAsync("")
+		// const test = (analysis.variables ?? [])[0].measureLevel
 
-
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		//const fn = async () => {
 		// const table = await repo.tables.findAsync("")
 		// const analysis = await repo.analyses.findAsync("")

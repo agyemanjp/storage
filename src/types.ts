@@ -1,124 +1,134 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Obj } from "@sparkwave/standard/utility"
+import { Obj, Tuple } from "@sparkwave/standard/utility"
 import { FilterGroup } from "@sparkwave/standard/collections/"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
-export interface IOProvider<S extends Schema, X extends Obj = Obj> {
-	/** Find one entity object; throws exception if not found */
-	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<From<S, E>>
-
-	/** Get a set of entity objects */
-	getAsync: <E extends keyof S>(_: { entity: E, parentId?: string, filters?: FilterGroup<From<S, E>> }) => Promise<From<S, E>[]>
-
-	/** Insert or update a set of entity objects */
-	saveAsync: <E extends keyof S>(_: { entity: E, data: To<S, E>[], mode: "insert" | "update" }) => Promise<From<S, E>[]>
-
-	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<From<S, E>>
-	deleteManyAsync?: <E extends keyof S>(_: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<From<S, E>[]>
-
-	extensions: X
-}
-
-export type EntityCache<S extends Schema> = {
-	[e in keyof S]: {
-		objects: Obj<Promise<EntityType<S[e]["fromStorage"]>>, string /*entityId*/>,
-		collections: Obj<Promise<EntityType<S[e]["fromStorage"]>[]>, string /* {parentEntityId, filters (as JSON)} */>,
-	}
-}
-
-export interface RepositoryReadonly<Out extends Obj> {
-	/** find one entity object with a specific id, throws exception if not found */
-	findAsync(id: string): Promise<Out>
-
-	/** get entity objects with optional parent and additional filters ... */
-	getAsync(args: { parentId: string, filters?: FilterGroup<Out> }): Promise<Out[]>
-}
-
-export interface Repository<In extends Obj, Out extends Obj> extends RepositoryReadonly<Out> {
-	saveAsync: (data: In[], mode: "insert" | "update") => Promise<Out[]>
-	deleteAsync: (id: string) => Promise<Out>
-	deleteManyAsync?: (args: { parentId: string } | { ids: string[] }) => Promise<Out[]>
-}
 
 type PrimitiveTypeString = "string" | "number" | "boolean" | "unknown"
+// export type IdField = "id" | { type: "id", idType: "string" | "number" }
+export type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, nullable?: boolean }
+export type ObjectField = "object" | { type: "object", valueType: Field, nullable?: boolean }
+export type ArrayField = "array" | { type: "array", arrayType: Field, nullable?: boolean }
+export type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
+
+export type NullableType<T, Nullable extends boolean | undefined> = Nullable extends true ? (T | undefined) : T
+
 export type PrimitiveType<T extends PrimitiveTypeString> = (
 	T extends "unknown" ? unknown :
 	T extends "string" ? string :
 	T extends "number" ? number
 	: boolean
 )
-
-/** Entity specification in terms of fields. By convention, "id" field, if present, is the primary key */
-export type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, isNullable?: boolean }
-export type ObjectField = "object" | { type: "object", valueType: Field, isNullable?: boolean }
-export type ArrayField = "array" | { type: "array", arrayType: Field, isNullable?: boolean }
-export type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
-
-export type PrimitiveFieldType<F extends PrimitiveField> = (F extends { type: PrimitiveTypeString, isNullable?: boolean }
-	? PrimitiveType<F["type"]>
+export type PrimitiveFieldType<F extends PrimitiveField> = (F extends { type: PrimitiveTypeString, nullable?: boolean }
+	? NullableType<PrimitiveType<F["type"]>, F["nullable"]>
 	: F extends PrimitiveTypeString
 	? PrimitiveType<F>
 	: never
 )
+/*export type IdFieldType<F extends IdField> = (F extends { type: "id", idType: "string" | "number" }
+	? PrimitiveType<F["idType"]>
+	: F extends PrimitiveTypeString
+	? PrimitiveType<F>
+	: never
+)*/
 export type ObjectFieldType<F extends ObjectField> = (F extends "object"
 	? Obj
-	: F extends { type: "object", valueType: PrimitiveField, isNullable?: boolean }
-	? PrimitiveFieldType<F["valueType"]>
-	: F extends { type: "object", valueType: ArrayField, isNullable?: boolean }
+	: F extends { type: "object", valueType: PrimitiveField, nullable?: boolean }
+	? NullableType<PrimitiveFieldType<F["valueType"]>, F["nullable"]>
+	: F extends { type: "object", valueType: ArrayField, nullable?: boolean }
 	? ArrayFieldType<F["valueType"]>
-	: F extends { type: "object", valueType: ObjectField, isNullable?: boolean }
+	: F extends { type: "object", valueType: ObjectField, nullable?: boolean }
 	? Obj<Obj>
 	: never
 )
 export type ArrayFieldType<F extends ArrayField> = (F extends "array"
 	? unknown[]
-	: F extends { type: "array", arrayType: Field, isNullable?: boolean }
-	? Array<FieldType<F["arrayType"]>>
+	: F extends { type: "array", arrayType: Field, nullable?: boolean }
+	? NullableType<Array<FieldType<F["arrayType"]>>, F["nullable"]>
 	: never
 )
 export type FieldType<F extends Field> = (
 	F extends PrimitiveField ? PrimitiveFieldType<F> :
 	F extends ObjectField ? ObjectFieldType<F> :
 	F extends ArrayField ? ArrayFieldType<F> :
-	F extends Obj<PrimitiveField | ArrayField | ObjectField> ? EntityType<F> :
+	F extends Obj<PrimitiveField | ArrayField | ObjectField> & { id: "string" | "number" } ? EntityType<{ fields: F }> :
 	never
 )
 
-export type Entity = Obj<Field>
-export type EntityType<E extends Entity | undefined> = {
-	[k in keyof E]: E[k] extends Field
-	? FieldType<E[k]>
-	: never
-}
+export type Entity = { fields: Obj<Field> & { id: "string" | "number" }; readonly?: boolean; parent?: string }
+export type EntityType<E extends Entity> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> }
 
-export type Schema = Obj<{
-	/** Entity type to storage, if entity is read-write */
-	toStorage?: Entity
-	/** Entity type from storage, merged with toStorage type, if present; So no need to repeat fields from toStorage */
-	fromStorage: Entity
-}>
+export type Schema = Obj<Entity>
 
-export type To<S extends Schema, E extends keyof S> = EntityType<S[E]["toStorage"]>
-export type From<S extends Schema, E extends keyof S> = To<S, E> & EntityType<S[E]["fromStorage"]>
+type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
 
-export type RepositoryGroup<S extends Schema, X extends Obj = {}> = {
-	[key in keyof S]: (
-		To<S, key> extends never
-		? RepositoryReadonly<From<S, key>>
-		: Repository<To<S, key>, From<S, key>>
-	)
-} & {
-	/** A method to remove an entry from the cache */
-	invalidateCache: (entity: keyof S, key?: { objectId: string } | { parentId: string }) => void
-} & {
+export interface IOProvider<S extends Schema, X extends Obj = Obj> {
+	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<T<S, E>>
+	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup<T<S, E>> }) => Promise<T<S, E>[]>
+
+	insertAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
+	updateAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
+
+	deleteAsync: <E extends keyof S>(_: { entity: E, ids: string[] }) => Promise<void>
+
 	extensions: X
 }
 
+export interface RepositoryReadonly<T extends Obj> {
+	/** Get one entity object with a specific id from underlying data-source
+	 * Throws exception if not found
+	 */
+	findAsync(id: string): Promise<T>
+
+	/** Get entity objects from underlying data-source with optional filters ... */
+	getAsync(filters?: FilterGroup<T>): Promise<T[]>
+}
+export interface Repository<T extends Obj & { id: string | number }> extends RepositoryReadonly<T> {
+	/** Insert one or more entity objects in underlying data source
+	 * Throws an exception if any id conflict occurs 
+	 */
+	insertAsync: (objects: T[]) => Promise<void>
+
+	/** Update one or more objects in underlying data source
+	 * Throws an exception if any id is not found in the data source 
+	 */
+	updateAsync: (objects: T[]) => Promise<void>
+
+	/** Delete one of more entity objects, identified by the passed ids, in underlying data source.
+	 * Throws an error if any of the ids are not found
+	 */
+	deleteAsync: (ids: string[]) => Promise<void>
+}
+
+export type RepositoryGroup<S extends Schema, X extends Obj | undefined = {}> = {
+	[key in keyof S]: (
+		S[key]["readonly"] extends false
+		? Repository<T<S, key>>
+		: RepositoryReadonly<T<S, key>>
+	)
+} & {
+	/*invalidateCache: (entity: keyof S, info?: {
+		parentId?: string,
+		operation: "delete" | "insert" | "update",
+		objecIds: string[] | number[]
+	}) => void*/
+
+	extensions: X
+}
+
+type FilterKey = string | "N/A"
+type ParentObjectId = string
+type ObjectId = string
+export type EntityCacheGroup<S extends Schema> = {
+	[e in keyof S]: {
+		objects: Obj<[entity: T<S, e>, timeStamp: number], ObjectId>,
+		vectors: Obj<[vector: Promise<T<S, e>[]>, timeStamp: number], FilterKey>
+	}
+}
 
 
-// Test
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, init-declarations, fp/no-let
 

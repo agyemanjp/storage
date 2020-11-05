@@ -1,17 +1,17 @@
+/* eslint-disable fp/no-mutation */
+/* eslint-disable no-empty */
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable brace-style */
 
-import { Obj, Tuple, hasValue } from "@sparkwave/standard/utility"
-import { FilterGroup } from "@sparkwave/standard/collections/containers/table"
-import { keys, fromKeyValues as objFromKeyValues } from "@sparkwave/standard/collections/object"
+import { Obj, Tuple } from "@sparkwave/standard/utility"
+import { DataTable, forEach } from "@sparkwave/standard/collections"
+import { keys, values, fromKeyValues } from "@sparkwave/standard/collections/object"
 
-import {
-	EntityCache,
-	To, From,
-	Schema, IOProvider,
-	Repository, RepositoryReadonly, RepositoryGroup
-} from "./types"
+import { EntityCacheGroup, EntityType, Schema, IOProvider, Repository, RepositoryReadonly, RepositoryGroup } from "./types"
+
+
+type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
 
 
 /** Generates a repository group from the io provider
@@ -19,94 +19,128 @@ import {
  * @param repos The individual repositories: tables, users...
  */
 export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
-	{ ioProvider: (cfg: Cfg) => IOProvider<S, X>, schema: S }): (cfg: Cfg) => RepositoryGroup<S, X> {
+	{
+		/** schema that defines the entity model */
+		schema: S,
+
+		/** io provider factory; use cache alone if not provided */
+		io?: (cfg: Cfg) => IOProvider<S, X>,
+
+		// cacheProvider: { get; set; }
+	}):
+	(cfg: Cfg) => RepositoryGroup<S, typeof args.io extends undefined ? undefined : X> {
 
 	return (config: Cfg) => {
-		const cache: EntityCache<S> = objFromKeyValues(keys(args.schema).map(e => new Tuple(e, ({
+		const cache: EntityCacheGroup<S> = fromKeyValues(keys(args.schema).map(e => new Tuple(e, ({
 			objects: {},
-			collections: {}
+			vectors: {}
 		}))))
 
 		try {
-			const io = args.ioProvider(config)
+			const ioProvider = args.io ? args.io(config) : undefined
 
-			// eslint-disable-next-line no-shadow
-			const makeRepository = <E extends keyof S>(e: E, cache?: EntityCache<S>) => {
+			const repositoryFactory = <E extends keyof S>(e: E, _cache: EntityCacheGroup<S>) => {
+				const CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
+				const invalidOrStale = <T>(entry?: [T, number]) =>
+					(entry === undefined) || (new Date().getTime() - entry[1] > CACHE_EXPIRATION_MILLISECONDS)
+
 				return {
-					findAsync: async (id: string) => {
-						if (hasValue(cache) && hasValue(cache[e])) {
-							if (!hasValue(cache[e].objects[id])) {
-								// eslint-disable-next-line fp/no-mutation
-								cache[e].objects[id] = io.findAsync({ entity: e, id: id })
-							}
-							return cache[e].objects[id]
+					findAsync: async (id) => {
+						const objects = _cache[e].objects
+						if (ioProvider && invalidOrStale(objects[id])) {
+							// eslint-disable-next-line fp/no-mutation
+							objects[id] = new Tuple(
+								await ioProvider.findAsync({ entity: e, id: id }),
+								new Date().getTime()
+							)
 						}
-						else {
-							return io.findAsync({ entity: e, id: id })
-						}
+						return objects[id][0]
 					},
 
-					getAsync: async (selector: { parentId?: string, filters?: FilterGroup<From<S, E>> }) => {
-						if (hasValue(cache) && hasValue(cache[e])) {
-							const cacheIndex = (selector.parentId || "") + "|" + JSON.stringify(selector.filters)
-							if (!hasValue(cache[e].collections[cacheIndex])) {
-								// eslint-disable-next-line fp/no-mutation
-								cache[e].collections[cacheIndex] = io.getAsync({
-									entity: e,
-									parentId: selector?.parentId,
-									filters: selector?.filters
-								})
+					getAsync: async (filter) => {
+						const filtersKey = filter ? JSON.stringify(filter) : "N/A"
+						const vectors = _cache[e].vectors
+						if (ioProvider) {
+							if (invalidOrStale(vectors[filtersKey])) {
+								vectors[filtersKey] = [
+									ioProvider.getAsync({ entity: e, filters: filter }),
+									new Date().getTime()
+								]
 							}
-
-							return cache[e].collections[cacheIndex]
 						}
 						else {
-							return io.getAsync({
-								entity: e,
-								parentId: selector?.parentId,
-								filters: selector?.filters
-							})
+							if (vectors[filtersKey] === undefined) {
+								const vals = vectors["N/A"]
+									? await vectors["N/A"][0]
+									: values(_cache[e].objects).map(v => v[0])
+								const dataTable = DataTable.fromRows(vals)
+								const newData = (filter ? dataTable.filter({ filter }) : dataTable).rowObjects
+								vectors[filtersKey] = [Promise.resolve([...newData]), new Date().getTime()]
+							}
 						}
+						return vectors[filtersKey][0]
 					},
 
-					...("toStorage" in args.schema[e] ?
+					...(args.schema[e]["readonly"] === false ?
 						{
-							saveAsync: async (data: To<S, E>[], mode: "insert" | "update") => {
-								return mode === "update"
-									? io.saveAsync({ entity: e, data: data, mode: "update" })
-									: io.saveAsync({ entity: e, data: data, mode: "insert" })
+							insertAsync: async (objects) => {
+								if (ioProvider) {
+									await ioProvider.insertAsync({ entity: e, objects })
+								}
+
+								// Append new objects to base vector cache, and remove all other vectors cache entries
+								const baseVector = _cache[e].vectors["N/A"]
+								_cache[e].vectors = {
+									"N/A": [
+										baseVector[0].then(vector => [...vector, ...objects]),
+										baseVector[1]
+									]
+								}
+
+								forEach(objects, (datum) => {
+									_cache[e].objects[String(datum.id)] = new Tuple(datum, new Date().getTime())
+								})
 							},
 
-							deleteAsync: async (id: string) => io.deleteAsync({ entity: e, id: id }),
-							// eslint-disable-next-line no-shadow
-							deleteManyAsync: async (args: { parentId: string } | { ids: string[] }) => io.deleteManyAsync
-								? io.deleteManyAsync({
-									entity: e,
-									..."parentId" in args
-										? { parentId: args["parentId"] }
-										: { ids: args["ids"] }
+							updateAsync: async (objects) => {
+								if (ioProvider) {
+									await ioProvider.updateAsync({ entity: e, objects })
+								}
+
+								// Remove all vectors cache entries
+								_cache[e].vectors = {}
+
+								forEach(objects, (datum) => {
+									_cache[e].objects[String(datum.id)][0] = datum
 								})
-								: undefined
+							},
+
+							deleteAsync: async (ids) => {
+								if (ioProvider) {
+									ioProvider.deleteAsync({ entity: e, ids })
+								}
+								_cache[e].vectors = {}
+								forEach(ids, (id) => {
+									// eslint-disable-next-line fp/no-delete
+									delete _cache[e].objects[String(id)]
+								})
+
+							}
 						}
+
 						: {
 						}
 					)
 
-				} as To<S, E> extends never
-					? RepositoryReadonly<From<S, E>>
-					: Repository<To<S, E>, From<S, E>>
+				} as S[E]["readonly"] extends false ? Repository<T<S, E>> : RepositoryReadonly<T<S, E>>
 			}
 
-			const r: RepositoryGroup<S, X> = {
-				...objFromKeyValues(keys(args.schema).map(e => new Tuple(e, makeRepository(e, cache)))),
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				invalidateCache: (entityName: keyof S, key?: { objectId: string } | { parentId: string }) => {
-					// eslint-disable-next-line fp/no-mutation
-					cache[entityName] = { objects: {}, collections: {} }//[entityObjId]
-				},
-				extensions: io.extensions
-			}
-			return r
+			const core = fromKeyValues(keys(args.schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
+
+			return args.io && ioProvider
+				? { ...core, extensions: ioProvider.extensions } //as RepositoryGroup<S, X>
+				: { ...core, extensions: undefined as any } //as RepositoryGroup<S, any>
+
 		}
 		catch (err) {
 			throw new Error(`Error creating io provider: ${err} `)
