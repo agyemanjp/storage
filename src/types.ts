@@ -8,13 +8,12 @@ export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
 
 type PrimitiveTypeString = "string" | "number" | "boolean" | "unknown"
-// export type IdField = "id" | { type: "id", idType: "string" | "number" }
 export type PrimitiveField = PrimitiveTypeString | { type: PrimitiveTypeString, nullable?: boolean }
 export type ObjectField = "object" | { type: "object", valueType: Field, nullable?: boolean }
 export type ArrayField = "array" | { type: "array", arrayType: Field, nullable?: boolean }
 export type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
 
-export type NullableType<T, Nullable extends boolean | undefined> = Nullable extends true ? (T | undefined) : T
+export type NullableType<T, Nullable extends boolean | undefined> = Nullable extends true ? (T | undefined | void) : T
 
 export type PrimitiveType<T extends PrimitiveTypeString> = (
 	T extends "unknown" ? unknown :
@@ -58,54 +57,12 @@ export type FieldType<F extends Field> = (
 	never
 )
 
-// export type Entity<F extends Obj<Field>> = {
-// 	fields: F;
-// 	readonly?: boolean;
-// 	parent?: string
-// 	idField?: keyof ExtractByType<F, "string" | "number">
-// }
-
 export interface Entity {
 	fields: Obj<Field>;
 	readonly?: boolean;
 	parent?: string
 	idField?: keyof this["fields"]
 }
-
-// export interface Entity1 {
-// 	fields: Obj<Field>;
-// 	idField: keyof this["fields"]
-// 	readonly?: boolean;
-// 	parent?: string
-// }
-
-/*export type EntityType1<E extends Entity1> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> } &
-	{ [k in E["idField"]]: FieldType<E["fields"][E["idField"]]> }
-
-const t = {
-	fields: {
-		id: "string",
-		name: "string",
-		projectId: "string",
-		parsedStorageUrl: "string",
-		originalSource: "string",
-		numRows: "number",
-		numColumns: "number",
-		whenCreated: "number"
-	}
-} as const
-
-const t1 = {
-	fields: {
-		xId: "string",
-		desc: { type: "string", nullable: true }
-	},
-	idField: "xId"
-} as const
-
-type TT = EntityType<typeof t>
-type TT1 = EntityType1<typeof t1>
-*/
 
 export type EntityType<E extends Entity> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> }
 
@@ -175,19 +132,3 @@ export type EntityCacheGroup<S extends Schema> = {
 		vectors: Obj<[vector: Promise<T<S, e>[]>, timeStamp: number], FilterKey>
 	}
 }
-
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, init-declarations, fp/no-let
-
-/*export interface IOProvider<M extends Schema, X extends Obj = Obj> {
-	// find one entity object; throws exception if not found
-	findAsync: <E extends keyof M>(args: { entity: E, id: string }) => Promise<M[E]["fromStorage"]>
-
-	// get a set of entity objects
-	getAsync: <E extends keyof M>(args: { entity: E, parentId?: string, filters?: FilterGroup<M[E]["fromStorage"]> }) => Promise<M[E]["fromStorage"][]>
-
-	saveAsync: <E extends keyof M>(args: { entity: E, obj: M[E]["toStorage"][], mode: "insert" | "update" }) => Promise<M[E]["fromStorage"][]>
-	deleteAsync: <E extends keyof M>(args: { entity: E, id: string }) => Promise<M[E]["fromStorage"]>
-	deleteManyAsync?: <E extends keyof M>(args: { entity: E } & ({ ids: string[] } | { parentId: string })) => Promise<M[E]["fromStorage"][]>
-	extensions: X
-}*/
