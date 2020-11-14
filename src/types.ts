@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Obj, Tuple } from "@sparkwave/standard/utility"
+import { Obj, Tuple, ExtractByType, KeysByType } from "@sparkwave/standard/utility"
 import { FilterGroup } from "@sparkwave/standard/collections/"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
@@ -53,11 +54,59 @@ export type FieldType<F extends Field> = (
 	F extends PrimitiveField ? PrimitiveFieldType<F> :
 	F extends ObjectField ? ObjectFieldType<F> :
 	F extends ArrayField ? ArrayFieldType<F> :
-	F extends Obj<PrimitiveField | ArrayField | ObjectField> & { id: "string" | "number" } ? EntityType<{ fields: F }> :
+	F extends Obj<PrimitiveField | ArrayField | ObjectField> /*& { id: "string" | "number" }*/ ? EntityType<{ fields: F }> :
 	never
 )
 
-export type Entity = { fields: Obj<Field> & { id: "string" | "number" }; readonly?: boolean; parent?: string }
+// export type Entity<F extends Obj<Field>> = {
+// 	fields: F;
+// 	readonly?: boolean;
+// 	parent?: string
+// 	idField?: keyof ExtractByType<F, "string" | "number">
+// }
+
+export interface Entity {
+	fields: Obj<Field>;
+	readonly?: boolean;
+	parent?: string
+	idField?: keyof this["fields"]
+}
+
+// export interface Entity1 {
+// 	fields: Obj<Field>;
+// 	idField: keyof this["fields"]
+// 	readonly?: boolean;
+// 	parent?: string
+// }
+
+/*export type EntityType1<E extends Entity1> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> } &
+	{ [k in E["idField"]]: FieldType<E["fields"][E["idField"]]> }
+
+const t = {
+	fields: {
+		id: "string",
+		name: "string",
+		projectId: "string",
+		parsedStorageUrl: "string",
+		originalSource: "string",
+		numRows: "number",
+		numColumns: "number",
+		whenCreated: "number"
+	}
+} as const
+
+const t1 = {
+	fields: {
+		xId: "string",
+		desc: { type: "string", nullable: true }
+	},
+	idField: "xId"
+} as const
+
+type TT = EntityType<typeof t>
+type TT1 = EntityType1<typeof t1>
+*/
+
 export type EntityType<E extends Entity> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> }
 
 export type Schema = Obj<Entity>
@@ -85,7 +134,7 @@ export interface RepositoryReadonly<T extends Obj> {
 	/** Get entity objects from underlying data-source with optional filters ... */
 	getAsync(filters?: FilterGroup<T>): Promise<T[]>
 }
-export interface Repository<T extends Obj & { id: string | number }> extends RepositoryReadonly<T> {
+export interface Repository<T extends Obj /*& { id: string | number }*/> extends RepositoryReadonly<T> {
 	/** Insert one or more entity objects in underlying data source
 	 * Throws an exception if any id conflict occurs 
 	 */
@@ -126,7 +175,6 @@ export type EntityCacheGroup<S extends Schema> = {
 		vectors: Obj<[vector: Promise<T<S, e>[]>, timeStamp: number], FilterKey>
 	}
 }
-
 
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, init-declarations, fp/no-let

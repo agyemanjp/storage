@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable fp/no-delete */
 /* eslint-disable fp/no-mutation */
 /* eslint-disable no-empty */
 /* eslint-disable @typescript-eslint/no-empty-function */
@@ -98,7 +100,8 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								}
 
 								forEach(objects, (datum) => {
-									_cache[e].objects[String(datum.id)] = new Tuple(datum, new Date().getTime())
+									const idFieldname = args.schema[e].idField!
+									_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 								})
 							},
 
@@ -111,7 +114,8 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								_cache[e].vectors = {}
 
 								forEach(objects, (datum) => {
-									_cache[e].objects[String(datum.id)][0] = datum
+									const idFieldname = args.schema[e].idField!
+									_cache[e].objects[String(datum[idFieldname])][0] = datum
 								})
 							},
 
