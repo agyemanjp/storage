@@ -13,7 +13,7 @@ export type ObjectField = "object" | { type: "object", valueType: Field, nullabl
 export type ArrayField = "array" | { type: "array", arrayType: Field, nullable?: boolean }
 export type Field = PrimitiveField | ArrayField | ObjectField | Obj<PrimitiveField | ArrayField | ObjectField>
 
-export type NullableType<T, Nullable extends boolean | undefined> = Nullable extends true ? (T | undefined | void) : T
+export type NullableType<T, Nullable extends boolean | undefined> = Nullable extends true ? (T | undefined) : T
 
 export type PrimitiveType<T extends PrimitiveTypeString> = (
 	T extends "unknown" ? unknown :
