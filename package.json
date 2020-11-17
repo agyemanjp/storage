@@ -35,7 +35,7 @@
 		"typescript": "^3.8.3"
 	},
 	"dependencies": {
-		"@sparkwave/standard": "^2.6.0",
+		"@sparkwave/standard": "2.6.0",
 		"@types/pluralize": "0.0.29",
 		"@types/shortid": "0.0.29",
 		"pluralize": "^8.0.0",
