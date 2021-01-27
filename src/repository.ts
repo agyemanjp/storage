@@ -111,17 +111,16 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 						? this.io.saveAsync({ entity: dto.name as string, obj: obj, mode: "update" })
 						: this.io.saveAsync({ entity: dto.name as string, obj: obj, mode: "insert" })
 
-					resultPromise.then(results => {
-						results.forEach(result => {
-							// We invalidate the findAsync cache of all entities with that id (so that updates work)
-							result.id !== undefined ? this.bustCache(dto.name, { type: "single", entityId: result.id as string }) : undefined
+					const results = await resultPromise
+					results.forEach(result => {
+						// We invalidate the findAsync cache of all entities with that id (so that updates work)
+						result.id !== undefined ? this.bustCache(dto.name, { type: "single", entityId: result.id as string }) : undefined
 
-							// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
-							const effectiveParentId = dto.parentName !== "" ? result[`${singular(dto.parentName as string)}Id`].toString() : ""
-							this.bustCache(dto.name, { type: "multiple", parentEntityId: effectiveParentId })
-						})
+						// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
+						const effectiveParentId = dto.parentName !== "" ? result[`${singular(dto.parentName as string)}Id`].toString() : ""
+						this.bustCache(dto.name, { type: "multiple", parentEntityId: effectiveParentId })
 					})
-					return resultPromise
+					return results
 				},
 				deleteAsync: async (id: string) => {
 					const deletedEntity = await this.io.deleteAsync({ entity: dto.name as string, id: id })
