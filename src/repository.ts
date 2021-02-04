@@ -113,11 +113,16 @@ export function generate<X, D extends DTOsMap>(ioProviderClass: Ctor<object, IOP
 
 					const results = await resultPromise
 					results.forEach(result => {
+						const parentId = result[`${singular(dto.parentName as string)}Id`]
+						if (parentId === undefined) {
+							throw new Error(`Problem during the save: saved entity had no parent Id`)
+						}
+
 						// We invalidate the findAsync cache of all entities with that id (so that updates work)
 						result.id !== undefined ? this.bustCache(dto.name, { type: "single", entityId: result.id as string }) : undefined
 
 						// We invalidate all getAsync cache entries for entities with the same parent (when adding a table, the getTable of that project will be refreshed)
-						const effectiveParentId = dto.parentName !== "" ? result[`${singular(dto.parentName as string)}Id`].toString() : ""
+						const effectiveParentId = dto.parentName !== "" ? parentId.toString() : ""
 						this.bustCache(dto.name, { type: "multiple", parentEntityId: effectiveParentId })
 					})
 					return results
