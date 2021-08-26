@@ -47,9 +47,9 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 					(entry === undefined) || (new Date().getTime() - entry[1] > CACHE_EXPIRATION_MILLISECONDS)
 
 				return {
-					findAsync: async (id) => {
+					findAsync: async (id, refreshCache?: boolean) => {
 						const objects = _cache[e].objects
-						if (ioProvider && invalidOrStale(objects[id])) {
+						if (ioProvider && (invalidOrStale(objects[id]) || refreshCache)) {
 							// eslint-disable-next-line fp/no-mutation
 							objects[id] = new Tuple(
 								await ioProvider.findAsync({ entity: e, id: id }),
@@ -59,11 +59,11 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 						return objects[id][0]
 					},
 
-					getAsync: async (filter) => {
+					getAsync: async (filter, refreshCache?: boolean) => {
 						const filtersKey = filter ? JSON.stringify(filter) : "N/A"
 						const vectors = _cache[e].vectors
 						if (ioProvider) {
-							if (invalidOrStale(vectors[filtersKey])) {
+							if (invalidOrStale(vectors[filtersKey]) || refreshCache) {
 								vectors[filtersKey] = [
 									ioProvider.getAsync({ entity: e, filters: filter }),
 									new Date().getTime()
@@ -91,7 +91,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								}
 
 								// Append new objects to base vector cache, and remove all other vectors cache entries
-								const baseVector = _cache[e].vectors["N/A"]
+								const baseVector = _cache[e].vectors["N/A"] || [Promise.resolve([]), new Date().getTime()]
 								_cache[e].vectors = {
 									"N/A": [
 										baseVector[0].then(vector => [...vector, ...objects]),
@@ -115,13 +115,13 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 
 								forEach(objects, (datum) => {
 									const idFieldname = args.schema[e].idField!
-									_cache[e].objects[String(datum[idFieldname])][0] = datum
+									_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 								})
 							},
 
 							deleteAsync: async (id) => {
 								if (ioProvider) {
-									ioProvider.deleteAsync({ entity: e, id })
+									await ioProvider.deleteAsync({ entity: e, id })
 								}
 								_cache[e].vectors = {}
 								delete _cache[e].objects[String(id)]

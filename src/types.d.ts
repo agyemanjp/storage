@@ -84,12 +84,15 @@ export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 
 export interface RepositoryReadonly<T extends Obj> {
 	/** Get one entity object with a specific id from underlying data-source
-	 * Throws exception if not found
+	 ** Throws exception if not found.
+	 ** If refreshCache is true, a new object will be queried from the data-source even if a cache entry already exists (for instance, if the data-source changed through another mean than the repository methods)
 	 */
-	findAsync(id: string): Promise<T>
+	findAsync(id: string, refreshCache?: boolean): Promise<T>
 
-	/** Get entity objects from underlying data-source with optional filters ... */
-	getAsync(filters?: FilterGroup<T>): Promise<T[]>
+	/** Get entity objects from underlying data-source with optional filters...
+	 ** If refreshCache is true, new objects will be queried from the data-source even if a cache entry already exists (for instance, if the data-source changed through another mean than the repository methods)
+	 */
+	getAsync(filters?: FilterGroup, refreshCache?: boolean): Promise<T[]>
 }
 export interface Repository<T extends Obj /*& { id: string | number }*/> extends RepositoryReadonly<T> {
 	/** Insert one or more entity objects in underlying data source
