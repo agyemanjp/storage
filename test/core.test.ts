@@ -113,6 +113,7 @@ describe('generateRepositoryFactory', () => {
 				}
 			}
 		} as const
+
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		// const _schema: Schema = schema
 

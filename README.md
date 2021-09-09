@@ -1,3 +1,3 @@
-# repository.ts
-Database access through the repository pattern in Javascript/TypeScript
+# storage.js
+Data source access through the repository pattern in Javascript/TypeScript
 
