@@ -72,7 +72,7 @@ type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
 
 export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<T<S, E>>
-	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup<T<S, E>> }) => Promise<T<S, E>[]>
+	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup }) => Promise<T<S, E>[]>
 
 	insertAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
 	updateAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>

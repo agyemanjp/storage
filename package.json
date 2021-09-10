@@ -2,12 +2,11 @@
 	"name": "@sparkwave/storage",
 	"version": "1.4.0",
 	"description": "Datasource access through the repository pattern in Javascript/TypeScript",
-	"declaration": true,
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"main": "index.js",
+	"types": "index.d.ts",
 	"files": [
-		"dist/*",
-		"!dist/*.tsbuildinfo"
+		"*",
+		"!*.tsbuildinfo"
 	],
 	"scripts": {
 		"setup": "rm -rf ./node_modules package-lock.json && npm install",
