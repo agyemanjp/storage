@@ -9,15 +9,16 @@
 		"!*.tsbuildinfo"
 	],
 	"scripts": {
-		"setup": "rm -rf ./node_modules package-lock.json && npm install",
+		"deps": "rm -rf ./node_modules package-lock.json && npm install",
 		"clean": "rm -rf dist/* .eslintcache *-report.json",
 		"lint": "eslint --ext ts --cache 'src/**'",
-		"lint-report": "eslint --ext ts --output-file .lint-report.json --format json-standard --cache src/*",
+		"lint-report": "eslint --ext ts --output-file .lint-report.json --format json-standard --cache 'src/**'",
 		"compile": "tsc",
 		"test": "mocha --require ts-node/register test/*.test.*",
 		"test-report": "mocha --require ts-node/register test/*.test.* --reporter mocha-reporter-json-standard >| .test-report.json",
 		"build": "npm run clean && npm run lint && npm run compile && npm run test",
-		"package": "git push --follow-tags && cp package.json LICENSE README.md dist && cd dist && npm publish --dry-run"
+		"package": "git push --follow-tags && cp package.json LICENSE README.md dist && cd dist && npm publish --dry-run",
+		"pub": "cd /dist && npm publish --access public && cd .."
 	},
 	"repository": {
 		"type": "git",
