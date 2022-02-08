@@ -1,5 +1,5 @@
 {
-	"name": "@sparkwave/storage",
+	"name": "@agyemanjp/storage",
 	"version": "1.4.2",
 	"description": "Datasource access through the repository pattern in Javascript/TypeScript",
 	"main": "index.js",
