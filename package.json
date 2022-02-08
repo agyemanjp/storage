@@ -56,7 +56,7 @@
 		"typescript": "^4.0.5"
 	},
 	"dependencies": {
-		"@sparkwave/standard": "2.29.1",
+		"@agyemanjp/standard": "^3.7.0",
 		"shortid": "^2.2.15"
 	}
 }

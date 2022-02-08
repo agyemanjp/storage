@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Obj, Tuple, ExtractByType, KeysByType } from "@sparkwave/standard/utility"
-import { FilterGroup } from "@sparkwave/standard/collections/"
+import { Obj, Tuple, ExtractByType, KeysByType, FilterGroup } from "@agyemanjp/standard"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
@@ -79,7 +78,7 @@ export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 
 	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<void>
 
-	extensions: X
+	extensions: (io: IOProvider<S, X>) => X
 }
 
 export interface RepositoryReadonly<T extends Obj> {

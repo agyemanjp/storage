@@ -6,9 +6,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable brace-style */
 
-import { Obj, Tuple } from "@sparkwave/standard/utility"
-import { DataTable, forEach } from "@sparkwave/standard/collections"
-import { keys, values, fromKeyValues } from "@sparkwave/standard/collections/object"
+import { Obj, Tuple, forEach, keys, values, objectFromTuples, DataTable } from "@agyemanjp/standard"
 
 import { EntityCacheGroup, EntityType, Schema, IOProvider, Repository, RepositoryReadonly, RepositoryGroup } from "./types"
 
@@ -26,20 +24,20 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 		schema: S,
 
 		/** io provider factory; use cache alone if not provided */
-		io?: (cfg: Cfg) => IOProvider<S, X>,
+		ioProviderFactory?: (cfg: Cfg) => IOProvider<S, X>,
 
 		// cacheProvider: { get; set; }
 	}):
-	(cfg: Cfg) => RepositoryGroup<S, typeof args.io extends undefined ? undefined : X> {
+	(cfg: Cfg) => RepositoryGroup<S, typeof args.ioProviderFactory extends undefined ? undefined : X> {
 
 	return (config: Cfg) => {
-		const cache: EntityCacheGroup<S> = fromKeyValues(keys(args.schema).map(e => new Tuple(e, ({
+		const cache: EntityCacheGroup<S> = objectFromTuples(keys(args.schema).map(e => new Tuple(e, ({
 			objects: {},
 			vectors: {}
 		}))))
 
 		try {
-			const ioProvider = args.io ? args.io(config) : undefined
+			const ioProvider = args.ioProviderFactory ? args.ioProviderFactory(config) : undefined
 
 			const repositoryFactory = <E extends keyof S>(e: E, _cache: EntityCacheGroup<S>) => {
 				const CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
@@ -135,10 +133,10 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 				} as S[E]["readonly"] extends false ? Repository<T<S, E>> : RepositoryReadonly<T<S, E>>
 			}
 
-			const core = fromKeyValues(keys(args.schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
+			const core = objectFromTuples(keys(args.schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
 
-			return args.io && ioProvider
-				? { ...core, extensions: ioProvider.extensions } //as RepositoryGroup<S, X>
+			return /*args.ioProviderFactory &&*/ ioProvider
+				? { ...core, extensions: ioProvider.extensions(ioProvider) } //as RepositoryGroup<S, X>
 				: { ...core, extensions: undefined as any } //as RepositoryGroup<S, any>
 
 		}
