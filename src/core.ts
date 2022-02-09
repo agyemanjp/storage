@@ -7,9 +7,11 @@
 /* eslint-disable brace-style */
 
 import { Obj, Tuple, forEach, keys, values, objectFromTuples, DataTable } from "@agyemanjp/standard"
-
-import { EntityCacheGroup, EntityType, Schema, IOProvider, Repository, RepositoryReadonly, RepositoryGroup } from "./types"
-
+import {
+	EntityCacheGroup, EntityType, Schema,
+	IOProvider,
+	Repository, RepositoryReadonly, RepositoryGroup
+} from "./types"
 
 type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
 
@@ -18,17 +20,31 @@ type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
  * @param ioProviderClass 
  * @param repos The individual repositories: tables, users...
  */
-export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void>(args:
 	{
-		/** schema that defines the entity model */
+		schema: S
+	}): (cfg: Cfg) => RepositoryGroup<S>
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = Obj>(args:
+	{
+		schema: S,
+		ioProviderInfo: {
+			factory: (cfg: Cfg) => IOProvider<S>,
+			extensions?: (io: IOProvider<S>) => X
+		}
+	}): (cfg: Cfg) => RepositoryGroup<S, typeof args.ioProviderInfo.extensions extends undefined ? undefined : X>
+
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj | undefined = undefined>(args:
+	{
+		/** Schema that defines the entity model */
 		schema: S,
 
-		/** io provider factory; use cache alone if not provided */
-		ioProviderFactory?: (cfg: Cfg) => IOProvider<S, X>,
-
+		/** IO provider factory; Repository is cache-only if not provided */
+		ioProviderInfo?: {
+			factory: (cfg: Cfg) => IOProvider<S>,
+			extensions?: (io: IOProvider<S>) => X
+		}
 		// cacheProvider: { get; set; }
-	}):
-	(cfg: Cfg) => RepositoryGroup<S, typeof args.ioProviderFactory extends undefined ? undefined : X> {
+	}) {
 
 	return (config: Cfg) => {
 		const cache: EntityCacheGroup<S> = objectFromTuples(keys(args.schema).map(e => new Tuple(e, ({
@@ -37,7 +53,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 		}))))
 
 		try {
-			const ioProvider = args.ioProviderFactory ? args.ioProviderFactory(config) : undefined
+			const ioProvider = args.ioProviderInfo ? args.ioProviderInfo.factory(config) : undefined
 
 			const repositoryFactory = <E extends keyof S>(e: E, _cache: EntityCacheGroup<S>) => {
 				const CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
@@ -135,8 +151,8 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 
 			const core = objectFromTuples(keys(args.schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
 
-			return /*args.ioProviderFactory &&*/ ioProvider
-				? { ...core, extensions: ioProvider.extensions(ioProvider) } //as RepositoryGroup<S, X>
+			return (args.ioProviderInfo && args.ioProviderInfo.extensions && ioProvider)
+				? { ...core, extensions: args.ioProviderInfo.extensions(ioProvider) } //as RepositoryGroup<S, X>
 				: { ...core, extensions: undefined as any } //as RepositoryGroup<S, any>
 
 		}
@@ -151,9 +167,11 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 /*	# Cache system
 	If the option is enabled, a cache object will be created along with the repository group.
 	It stores the return values of calls to "getAsync" and "findAsync" functions, to return it faster when the same calls are made afterwards.
+	
 	### Entries insertion
 	A call to "findAsync" creates a "single" type cache entry, which stores a single entity.
 	A call to "getAsync" creates a "multiple" cache entry, which stores all entities returned by the function.
+	
 	### Entries invalidation
 	**Automatic**
 	When the saveAsync and deleteAsync functions are called, all cache entries related to the updated entity will be removed: its "single" type entry if present, and any "multiple" entries that included it in the results.

@@ -69,7 +69,7 @@ export type Schema = Obj<Entity>
 
 type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
 
-export interface IOProvider<S extends Schema, X extends Obj = Obj> {
+export interface IOProvider<S extends Schema> {
 	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<T<S, E>>
 	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup }) => Promise<T<S, E>[]>
 
@@ -77,9 +77,10 @@ export interface IOProvider<S extends Schema, X extends Obj = Obj> {
 	updateAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
 
 	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<void>
-
-	extensions: (io: IOProvider<S, X>) => X
 }
+// export type IOProviderExtended<S extends Schema, X extends Obj = Obj> = IOProvider<S> & {
+// 	extensions: (io: IOProvider<S>) => X
+// }
 
 export interface RepositoryReadonly<T extends Obj> {
 	/** Get one entity object with a specific id from the underlying data-source
@@ -111,7 +112,7 @@ export interface Repository<T extends Obj /*& { id: string | number }*/> extends
 	deleteAsync: (id: string) => Promise<void>
 }
 
-export type RepositoryGroup<S extends Schema, X extends Obj | undefined = {}> = {
+export type RepositoryGroup<S extends Schema, X extends Obj | undefined = undefined> = {
 	[key in keyof S]: (
 		S[key]["readonly"] extends false
 		? Repository<T<S, key>>
