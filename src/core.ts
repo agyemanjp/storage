@@ -20,40 +20,31 @@ type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
  * @param ioProviderClass 
  * @param repos The individual repositories: tables, users...
  */
-export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void>(args:
-	{
-		schema: S
-	}): (cfg: Cfg) => RepositoryGroup<S>
-export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = Obj>(args:
-	{
-		schema: S,
-		ioProviderInfo: {
-			factory: (cfg: Cfg) => IOProvider<S>,
-			extensions?: (io: IOProvider<S>) => X
-		}
-	}): (cfg: Cfg) => RepositoryGroup<S, typeof args.ioProviderInfo.extensions extends undefined ? undefined : X>
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void>(schema: S): (cfg: Cfg) => RepositoryGroup<S>
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = Obj>(
+	schema: S,
+	io: (cfg: Cfg) => IOProvider<S>,
+	extensions?: (io: IOProvider<S>) => X
+): (cfg: Cfg) => RepositoryGroup<S, typeof extensions extends undefined ? undefined : X>
 
-export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj | undefined = undefined>(args:
-	{
-		/** Schema that defines the entity model */
-		schema: S,
+export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(
+	/** Schema that defines the entity model */
+	schema: S,
 
-		/** IO provider factory; Repository is cache-only if not provided */
-		ioProviderInfo?: {
-			factory: (cfg: Cfg) => IOProvider<S>,
-			extensions?: (io: IOProvider<S>) => X
-		}
-		// cacheProvider: { get; set; }
-	}) {
+	/** IO provider factory; Repository is cache-only if not provided */
+	io?: (cfg: Cfg) => IOProvider<S>,
+
+	extensions?: (io: IOProvider<S>) => X
+) {
 
 	return (config: Cfg) => {
-		const cache: EntityCacheGroup<S> = objectFromTuples(keys(args.schema).map(e => new Tuple(e, ({
+		const cache: EntityCacheGroup<S> = objectFromTuples(keys(schema).map(e => new Tuple(e, ({
 			objects: {},
 			vectors: {}
 		}))))
 
 		try {
-			const ioProvider = args.ioProviderInfo ? args.ioProviderInfo.factory(config) : undefined
+			const ioProvider = io ? io(config) : undefined
 
 			const repositoryFactory = <E extends keyof S>(e: E, _cache: EntityCacheGroup<S>) => {
 				const CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
@@ -97,7 +88,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 						return vectors[filtersKey][0]
 					},
 
-					...(args.schema[e]["readonly"] === false ?
+					...(schema[e]["readonly"] === false ?
 						{
 							insertAsync: async (objects) => {
 								if (ioProvider) {
@@ -114,7 +105,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								}
 
 								forEach(objects, (datum) => {
-									const idFieldname = args.schema[e].idField!
+									const idFieldname = schema[e].idField!
 									_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 								})
 							},
@@ -128,7 +119,7 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 								_cache[e].vectors = {}
 
 								forEach(objects, (datum) => {
-									const idFieldname = args.schema[e].idField!
+									const idFieldname = schema[e].idField!
 									_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 								})
 							},
@@ -149,10 +140,10 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 				} as S[E]["readonly"] extends false ? Repository<T<S, E>> : RepositoryReadonly<T<S, E>>
 			}
 
-			const core = objectFromTuples(keys(args.schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
+			const core = objectFromTuples(keys(schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
 
-			return (args.ioProviderInfo && args.ioProviderInfo.extensions && ioProvider)
-				? { ...core, extensions: args.ioProviderInfo.extensions(ioProvider) } //as RepositoryGroup<S, X>
+			return (io && extensions && ioProvider)
+				? { ...core, extensions: extensions(ioProvider) } //as RepositoryGroup<S, X>
 				: { ...core, extensions: undefined as any } //as RepositoryGroup<S, any>
 
 		}
@@ -161,7 +152,6 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 		}
 	}
 }
-
 
 
 /*	# Cache system
