@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Obj, Tuple, ExtractByType, KeysByType, FilterGroup } from "@agyemanjp/standard"
+import { Obj, Tuple, ExtractByType, KeysByType, TableFilter, FilterGroup } from "@agyemanjp/standard"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
@@ -63,24 +63,19 @@ export interface Entity {
 	idField?: keyof this["fields"]
 }
 
+export type Schema = Obj<Entity>
 export type EntityType<E extends Entity> = { [k in keyof E["fields"]]: FieldType<E["fields"][k]> }
 
-export type Schema = Obj<Entity>
 
-type T<S extends Schema, E extends keyof S> = EntityType<S[E]>
+export type IOProvider<Cfg, S extends Schema> = (config: Cfg) => {
+	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<EntityType<S[E]>>
+	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup }) => Promise<EntityType<S[E]>[]>
 
-export interface IOProvider<S extends Schema> {
-	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<T<S, E>>
-	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup }) => Promise<T<S, E>[]>
-
-	insertAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
-	updateAsync: <E extends keyof S>(_: { entity: E, objects: T<S, E>[] }) => Promise<void>
+	insertAsync: <E extends keyof S>(_: { entity: E, obj: EntityType<S[E]> }) => Promise<void>
+	updateAsync: <E extends keyof S>(_: { entity: E, obj: EntityType<S[E]> }) => Promise<void>
 
 	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<void>
 }
-// export type IOProviderExtended<S extends Schema, X extends Obj = Obj> = IOProvider<S> & {
-// 	extensions: (io: IOProvider<S>) => X
-// }
 
 export interface RepositoryReadonly<T extends Obj> {
 	/** Get one entity object with a specific id from the underlying data-source
@@ -99,12 +94,12 @@ export interface Repository<T extends Obj /*& { id: string | number }*/> extends
 	/** Insert one or more entity objects in underlying data source
 	 * Throws an exception if any id conflict occurs 
 	 */
-	insertAsync: (objects: T[]) => Promise<void>
+	insertAsync: (objects: T) => Promise<void>
 
 	/** Update one or more objects in underlying data source
 	 * Throws an exception if any id is not found in the data source 
 	 */
-	updateAsync: (objects: T[]) => Promise<void>
+	updateAsync: (objects: T) => Promise<void>
 
 	/** Delete one of more entity objects, identified by the passed ids, in underlying data source.
 	 * Throws an error if any of the ids are not found
@@ -112,27 +107,19 @@ export interface Repository<T extends Obj /*& { id: string | number }*/> extends
 	deleteAsync: (id: string) => Promise<void>
 }
 
-export type RepositoryGroup<S extends Schema, X extends Obj | undefined = undefined> = {
+export type RepositoryGroup<Cfg, S extends Schema> = (config: Cfg) => {
 	[key in keyof S]: (
 		S[key]["readonly"] extends false
-		? Repository<T<S, key>>
-		: RepositoryReadonly<T<S, key>>
+		? Repository<EntityType<S[key]>>
+		: RepositoryReadonly<EntityType<S[key]>>
 	)
-} & {
-	/*invalidateCache: (entity: keyof S, info?: {
-		parentId?: string,
-		operation: "delete" | "insert" | "update",
-		objecIds: string[] | number[]
-	}) => void*/
-
-	extensions: X
 }
 
-type FilterKey = string | "N/A"
 type ObjectId = string
+type FilterKey = string | "N/A"
 export type EntityCacheGroup<S extends Schema> = {
 	[e in keyof S]: {
-		objects: Obj<[entity: T<S, e>, timeStamp: number], ObjectId>,
-		vectors: Obj<[vector: Promise<T<S, e>[]>, timeStamp: number], FilterKey>
+		objects: Obj<[entity: EntityType<S[e]>, timeStamp: number], ObjectId>,
+		vectors: Obj<[vector: Promise<EntityType<S[e]>[]>, timeStamp: number], FilterKey>
 	}
 }
