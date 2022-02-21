@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/ban-types */
-import { Obj, Tuple, ExtractByType, KeysByType, TableFilter, FilterGroup } from "@agyemanjp/standard"
+import { Obj, Tuple, ExtractByType, KeysByType, TableFilter, Filter, FilterGroup } from "@agyemanjp/standard"
 
 export interface Ctor<TArgs = unknown, TObj = Obj> { new(args: TArgs): TObj }
 
@@ -69,7 +69,7 @@ export type EntityType<E extends Entity> = { [k in keyof E["fields"]]: FieldType
 
 export type IOProvider<Cfg, S extends Schema> = (config: Cfg) => {
 	findAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<EntityType<S[E]>>
-	getAsync: <E extends keyof S>(_: { entity: E, filters?: FilterGroup }) => Promise<EntityType<S[E]>[]>
+	getAsync: <E extends keyof S>(_: { entity: E, filter?: Filter | FilterGroup }) => Promise<EntityType<S[E]>[]>
 
 	insertAsync: <E extends keyof S>(_: { entity: E, obj: EntityType<S[E]> }) => Promise<void>
 	updateAsync: <E extends keyof S>(_: { entity: E, obj: EntityType<S[E]> }) => Promise<void>
@@ -107,12 +107,47 @@ export interface Repository<T extends Obj /*& { id: string | number }*/> extends
 	deleteAsync: (id: string) => Promise<void>
 }
 
-export type RepositoryGroup<Cfg, S extends Schema> = (config: Cfg) => {
+export type RepositoryGroup<Cfg, S extends Schema, X extends Obj = {}> = (config: Cfg) => {
 	[key in keyof S]: (
 		S[key]["readonly"] extends false
 		? Repository<EntityType<S[key]>>
 		: RepositoryReadonly<EntityType<S[key]>>
 	)
+} & {
+	extensions: X
+}
+
+export type RepositoryGroupCtor<Cfg, S extends Schema, X extends Obj = {}> = {
+	new(config: Cfg): {
+		/** Get one entity object with a specific id from the underlying data-source
+		 ** Throws an exception if the entity object is not found.
+		 ** @argument refreshCache If true, the cache will be invalidated
+		 */
+		findAsync<E extends keyof S>(entity: E, id: string, refreshCache?: boolean): Promise<EntityType<S[E]>>
+
+		/** Get entity objects from the underlying data-source
+		 ** @argument filters Optional filters to apply to the objects retrieved
+		 ** @argument refreshCache If true, cache will be invalidated before the the objects are retrieved
+		 */
+		getAsync<E extends keyof S>(entity: E, filters?: Filter | FilterGroup, refreshCache?: boolean): Promise<EntityType<S[E]>[]>
+
+		/** Insert one or more entity objects in underlying data source
+		 * Throws an exception if any id conflict occurs 
+		 */
+		insertAsync<E extends keyof S>(entity: E, obj: EntityType<S[E]>): Promise<void>
+
+		/** Update one or more objects in underlying data source
+		 * Throws an exception if any id is not found in the data source 
+		 */
+		updateAsync<E extends keyof S>(entity: E, obj: EntityType<S[E]>): Promise<void>
+
+		/** Delete one of more entity objects, identified by the passed ids, in underlying data source.
+		 * Throws an error if any of the ids are not found
+		 */
+		deleteAsync<E extends keyof S>(entity: E, id: string): Promise<void>
+
+		extensions: X
+	}
 }
 
 type ObjectId = string

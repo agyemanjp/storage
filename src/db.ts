@@ -9,7 +9,7 @@ export function asIOProvider<S extends Schema, Cfg>(dbProvider: DbProviderCtor<C
 		const db = new dbProvider(config)
 		return {
 			findAsync: async (args) => db.queryOne(db.select(String(args.entity), { fieldName: "id", operator: "equal", value: args.id })),
-			getAsync: async (args) => db.queryMany(db.select(String(args.entity), args.filters)),
+			getAsync: async (args) => db.queryMany(db.select(String(args.entity), args.filter)),
 			insertAsync: async (args) => db.queryAny(db.insert(String(args.entity), args.obj)),
 			updateAsync: async (args) => db.queryAny(db.update(String(args.entity), args.obj)),
 			deleteAsync: async (args) => db.queryAny(db.delete(String(args.entity), args.id))
@@ -42,12 +42,14 @@ export abstract class PostgresDbProvider implements DbProvider {
 	}
 	/** Turn the input column name into a string that can be directly interpolated into an sql string */
 	protected interpolatableColumnName(columnName: string): string {
-		return toSnakeCase(columnName).toLowerCase()
+		return columnName
+		// return toSnakeCase(columnName).toLowerCase()
 	}
 
 	/** Turn the input rowset (table, view, tablevalued UDF, etc) name into a string that can be directly interpolated into an sql string */
-	protected interpolatableRowsetName(rowsetName: string): string {
-		return toSnakeCase(rowsetName).toLowerCase()
+	protected interpolatableRowsetName(rowsetName: string, operation: "select" | "insert" | "update" | "delete" = "select"): string {
+		return rowsetName
+		// return toSnakeCase(rowsetName).toLowerCase()
 	}
 
 	protected predicateTemplates(): Obj<undefined | ((x: Primitive | null) => string), Required<Filter>["operator"]> {
