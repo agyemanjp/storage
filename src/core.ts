@@ -11,7 +11,7 @@ import {
 	EntityCacheGroup, EntityType, Schema,
 	IOProvider, Repository, RepositoryReadonly, RepositoryGroup
 } from "./types"
-
+// import { asIOProvider, PGPromiseProvider } from "./db"
 
 /** Generates a repository group from the io provider
  * @param schema The entity model schema
@@ -129,7 +129,6 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 			}
 
 			return objectFromTuples(keys(schema).map(e => new Tuple(e, repositoryFactory(e, cache))))
-
 		}
 		catch (err) {
 			throw new Error(`Error creating io provider: ${err} `)
@@ -137,6 +136,8 @@ export function repositoryGroupFactory<S extends Schema, Cfg extends Obj | void 
 	}
 }
 
+// const repoGroup = repositoryGroupFactory({}, asIOProvider(PGPromiseProvider))
+// repoGroup({ dbUrl: "" }).
 
 /*	# Cache system
 	If the option is enabled, a cache object will be created along with the repository group.

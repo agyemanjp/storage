@@ -4,7 +4,7 @@
 import { IOProvider, Schema, Entity, EntityType } from "./types"
 import { Primitive, Obj, Filter, FilterGroup, toSnakeCase, keys } from "@agyemanjp/standard"
 
-export function dbToIO<S extends Schema, Cfg>(dbProvider: DbProviderCtor<Cfg>): IOProvider<Cfg, S> {
+export function asIOProvider<S extends Schema, Cfg>(dbProvider: DbProviderCtor<Cfg>): IOProvider<Cfg, S> {
 	return ((config: Cfg) => {
 		const db = new dbProvider(config)
 		return {
@@ -32,7 +32,6 @@ export interface DbProviderCtor<Cfg> {
 }
 
 export abstract class PostgresDbProvider implements DbProvider {
-
 	abstract queryOne<T>(sql: string): Promise<T>
 	abstract queryMany<T>(sql: string): Promise<T[]>
 	abstract queryAny(sql: string): any
