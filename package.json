@@ -1,6 +1,6 @@
 {
 	"name": "@agyemanjp/storage",
-	"version": "1.4.13",
+	"version": "1.4.14",
 	"description": "Datasource access through the repository pattern in Javascript/TypeScript",
 	"main": "index.js",
 	"types": "index.d.ts",
