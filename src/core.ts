@@ -6,12 +6,12 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable brace-style */
 
-import { Obj, Tuple, keys, values, objectFromTuples, DataTable, Filter, FilterGroup } from "@agyemanjp/standard"
+import { Obj, Tuple, keys, values, objectFromTuples, DataTable, FilterSimple, FilterGroupSimple } from "@agyemanjp/standard"
 import {
 	EntityCacheGroup, EntityType, Schema,
 	IOProvider, Repository, RepositoryReadonly, RepositoryGroup, RepositoryGroupCtor
 } from "./types"
-import { asIOProvider, DbProviderCtor, PostgresDbProvider, DbProvider } from "./db"
+// import { asIOProvider, DbProviderCtor, PostgresDbProvider, DbProvider } from "./db"
 
 /** Generates a repository group class from the io provider
  * @param schema The entity model schema
@@ -20,8 +20,8 @@ import { asIOProvider, DbProviderCtor, PostgresDbProvider, DbProvider } from "./
 export function generateRepoGroupFn<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
 	{
 		schema: S,
-		ioProvider?: IOProvider<Cfg, S>,
-		extensions?: (io: ReturnType<IOProvider<Cfg, S>>) => X
+		ioProvider?: (cfg: Cfg) => IOProvider<S>,
+		extensions?: (io: IOProvider<S>) => X
 	}): RepositoryGroup<Cfg, S, typeof args.extensions extends undefined ? undefined : X> {
 
 
@@ -70,7 +70,7 @@ export function generateRepoGroupFn<S extends Schema, Cfg extends Obj | void = v
 						if (io) {
 							if (invalidOrStale(vectors[filtersKey]) || refreshCache) {
 								vectors[filtersKey] = [
-									io.getAsync({ entity: e, filter: filter }),
+									io.getAsync({ entity: e, filter: filter as any }),
 									new Date().getTime()
 								]
 							}
@@ -81,7 +81,7 @@ export function generateRepoGroupFn<S extends Schema, Cfg extends Obj | void = v
 									? await vectors["N/A"][0]
 									: values(_cache[e].objects).map(v => v[0])
 								const dataTable = DataTable.fromRows(vals)
-								const newData = (filter ? dataTable.filter({ filter }) : dataTable).rowObjects
+								const newData = (filter ? dataTable.filter({ filter: filter as any }) : dataTable).rowObjects
 								vectors[filtersKey] = [Promise.resolve([...newData]), new Date().getTime()]
 							}
 						}
@@ -158,50 +158,48 @@ export function generateRepoGroupFn<S extends Schema, Cfg extends Obj | void = v
 	}
 }
 
-export function generateRepoGroupClass<S extends Schema, Cfg extends Obj | void = void, X extends Obj = {}>(args:
-	{
-		schema: S,
-		ioProvider?: IOProvider<Cfg, S>,
-		extensions?: (io: ReturnType<IOProvider<Cfg, S>>) => X
-	}): RepositoryGroupCtor<Cfg, S, X> {
-
+export function generateRepoGroupClass<S extends Schema, C extends Obj | void = void, X extends Obj = Obj<never>>(
+	schema: S,
+	io?: (cfg: C) => IOProvider<S>,
+	ext?: (io: IOProvider<S>) => X)
+	: RepositoryGroupCtor<C, S, X> {
 	return class {
-		private cache: EntityCacheGroup<S>
-		private io: ReturnType<IOProvider<Cfg, S>> | undefined
+		private _cache: EntityCacheGroup<S>
+		private _io: IOProvider<S> | undefined
 		readonly CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
 
-		public extensions: typeof args.extensions extends undefined ? undefined : X
+		public extensions: typeof ext extends undefined ? undefined : X
 
 		invalidOrStale<T>(entry?: [T, number]) {
 			return (entry === undefined) || (new Date().getTime() - entry[1] > this.CACHE_EXPIRATION_MILLISECONDS)
 		}
 
-		constructor(config: Cfg) {
-			this.cache = objectFromTuples(keys(args.schema).map(e => new Tuple(e, ({ objects: {}, vectors: {} }))))
-			this.io = args.ioProvider ? args.ioProvider(config) : undefined
+		constructor(config: C) {
+			this._cache = objectFromTuples(keys(schema).map(e => new Tuple(e, ({ objects: {}, vectors: {} }))))
+			this._io = io ? io(config) : undefined
 
-			this.extensions = (args.extensions && this.io ? args.extensions(this.io) : undefined) as typeof args.extensions extends undefined ? undefined : X
+			this.extensions = (ext && this._io ? ext(this._io) : undefined) as typeof ext extends undefined ? undefined : X
 		}
 
 		async findAsync<E extends keyof S>(entity: E, id: any, refreshCache?: boolean) {
-			const objects = this.cache[entity].objects
-			if (this.io && (this.invalidOrStale(objects[id]) || refreshCache)) {
+			const objects = this._cache[entity].objects
+			if (this._io && (this.invalidOrStale(objects[id]) || refreshCache)) {
 				// eslint-disable-next-line fp/no-mutation
 				objects[id] = new Tuple(
-					await this.io.findAsync({ entity, id: id }),
+					await this._io.findAsync({ entity, id: id }),
 					new Date().getTime()
 				)
 			}
 			return objects[id][0]
 		}
 
-		async getAsync<E extends keyof S>(entity: E, filter: Filter | FilterGroup, refreshCache?: boolean) {
+		async getAsync<E extends keyof S>(entity: E, filter: FilterSimple | FilterGroupSimple, refreshCache?: boolean) {
 			const filtersKey = filter ? JSON.stringify(filter) : "N/A"
-			const vectors = this.cache[entity].vectors
-			if (this.io) {
+			const vectors = this._cache[entity].vectors
+			if (this._io) {
 				if (this.invalidOrStale(vectors[filtersKey]) || refreshCache) {
 					vectors[filtersKey] = [
-						this.io.getAsync({ entity, filter }),
+						this._io.getAsync({ entity, filter }),
 						new Date().getTime()
 					]
 				}
@@ -210,9 +208,9 @@ export function generateRepoGroupClass<S extends Schema, Cfg extends Obj | void 
 				if (vectors[filtersKey] === undefined) {
 					const vals = vectors["N/A"]
 						? await vectors["N/A"][0]
-						: values(this.cache[entity].objects).map(v => v[0])
+						: values(this._cache[entity].objects).map(v => v[0])
 					const dataTable = DataTable.fromRows(vals)
-					const newData = (filter ? dataTable.filter({ filter }) : dataTable).rowObjects
+					const newData = (filter ? dataTable.filter({ filter: filter as any }) : dataTable).rowObjects
 					vectors[filtersKey] = [Promise.resolve([...newData]), new Date().getTime()]
 				}
 			}
@@ -220,13 +218,13 @@ export function generateRepoGroupClass<S extends Schema, Cfg extends Obj | void 
 		}
 
 		async insertAsync<E extends keyof S>(entity: E, obj: EntityType<S[E]>) {
-			if (this.io) {
-				await this.io.insertAsync({ entity, obj })
+			if (this._io) {
+				await this._io.insertAsync({ entity, obj })
 			}
 
 			// Append new objects to base vector cache, and remove all other vectors cache entries
-			const baseVector = this.cache[entity].vectors["N/A"] || [Promise.resolve([]), new Date().getTime()]
-			this.cache[entity].vectors = {
+			const baseVector = this._cache[entity].vectors["N/A"] || [Promise.resolve([]), new Date().getTime()]
+			this._cache[entity].vectors = {
 				"N/A": [
 					baseVector[0].then(vector => [...vector, obj]),
 					baseVector[1]
@@ -238,40 +236,39 @@ export function generateRepoGroupClass<S extends Schema, Cfg extends Obj | void 
 			// 	_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 			// })
 
-			const idFieldname = args.schema[entity].idField!
-			this.cache[entity].objects[String(obj[idFieldname])] = new Tuple(obj, new Date().getTime())
+			const idFieldname = schema[entity].idField!
+			this._cache[entity].objects[String(obj[idFieldname])] = new Tuple(obj, new Date().getTime())
 
 		}
 
 		async updateAsync<E extends keyof S>(entity: E, obj: EntityType<S[E]>) {
-			if (this.io) {
-				await this.io.updateAsync({ entity, obj })
+			if (this._io) {
+				await this._io.updateAsync({ entity, obj })
 			}
 
 			// Remove all vectors cache entries
-			this.cache[entity].vectors = {}
+			this._cache[entity].vectors = {}
 
 			// forEach(objects, (datum) => {
 			// 	const idFieldname = schema[e].idField!
 			// 	_cache[e].objects[String(datum[idFieldname])] = new Tuple(datum, new Date().getTime())
 			// })
-			const idFieldname = args.schema[entity].idField!
-			this.cache[entity].objects[String(obj[idFieldname])] = new Tuple(obj, new Date().getTime())
+			const idFieldname = schema[entity].idField!
+			this._cache[entity].objects[String(obj[idFieldname])] = new Tuple(obj, new Date().getTime())
 
 		}
 
 		async deleteAsync<E extends keyof S>(entity: E, id: any) {
-			if (this.io) {
-				await this.io.deleteAsync({ entity, id })
+			if (this._io) {
+				await this._io.deleteAsync({ entity, id })
 			}
-			this.cache[entity].vectors = {}
-			delete this.cache[entity].objects[String(id)]
+			this._cache[entity].vectors = {}
+			delete this._cache[entity].objects[String(id)]
 		}
 	}
 }
 
-
-/* export const schema = {
+/*export const schema = {
 	projects: {
 		fields: {
 			id: "string",
@@ -422,12 +419,53 @@ const ioProvider = asIOProvider(class tabularPostgresDbProvider extends Postgres
 		return `SELECT * from ${this.interpolatableRowsetName(tablename)}(${JSON.stringify(data)}) as result`
 	}
 })
-*/
-// const repoFn = generateRepoGroupFn({ schema, ioProvider })
-// const repoClass = generateRepoGroupClass({ schema, ioProvider })
 
-// const cats1 = repoFn({ dbUrl: "" }).categories.getAsync(undefined, true)
-// const cats2 = new repoClass({ dbUrl: "" }).getAsync("categories", undefined, false).then(data => data[0].parsingEndpoint)
+const repoFn = generateRepoGroupFn({ schema, ioProvider })
+const repoClass = generateRepoGroupClass({ schema, ioProvider })
+
+const APIRepository = generateRepoGroupClass({
+	schema,
+
+	ioProvider: (cfg: { baseUrl: string }) => {
+		const baseUrl = (entity: string) => `${cfg.baseUrl}/api/${entity}`
+
+		return {
+			findAsync: async function (args) {
+				return getAsync({ url: `${baseUrl(args.entity)}/${args.id}` }, r => r.json())
+			},
+
+			getAsync: async function (args) {
+				return getAsync({
+					url: baseUrl(args.entity),
+					query: { filter: JSON.stringify(args.filter) }
+				}, r => r.json())
+			},
+
+			insertAsync: async function (args) {
+				await postAsync({
+					url: baseUrl(args.entity),
+					body: JSON.stringify(args.obj)
+				})
+			},
+
+			updateAsync: async function (args) {
+				return putAsync({
+					url: baseUrl(args.entity),
+					body: JSON.stringify(args.obj)
+				}).then(r => r.json())
+			},
+
+			deleteAsync: async function (args) {
+				await deleteAsync({ url: `${baseUrl(args.entity)}/${args.id}` })
+			}
+		}
+	}
+})
+
+const cats1 = repoFn({ dbUrl: "" }).categories.getAsync(undefined, true)
+const cats2 = new repoClass({ dbUrl: "" }).getAsync("categories", undefined, false).then(data => data[0].parsingEndpoint)
+const x = new APIRepository({ baseUrl: "" }).getAsync("")
+*/
 
 /* Cache system specification
 	If the option is enabled, a cache object will be created along with the repository group.
