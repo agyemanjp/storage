@@ -3,10 +3,10 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-misused-new */
-import { IOProviderPrimitive, Schema, SchemaPrimitive, EntityType } from "./types"
+import { IOProvider, Schema } from "./types"
 import { Obj, Filter, FilterGroup, keys, hasValue } from "@agyemanjp/standard"
 
-export function asIOProvider<S extends SchemaPrimitive, Cfg>(dbProvider: DbProviderCtor<Cfg>): (_: Cfg) => IOProviderPrimitive<S> {
+export function asIOProvider<S extends Schema, Cfg>(dbProvider: DbProviderCtor<Cfg>): (_: Cfg) => IOProvider<S> {
 	return ((config: Cfg) => {
 		const db = new dbProvider(config)
 		return {
@@ -18,7 +18,7 @@ export function asIOProvider<S extends SchemaPrimitive, Cfg>(dbProvider: DbProvi
 			updateAsync: async (args) => db.queryAny(db.update(String(args.entity), args.obj)),
 			deleteAsync: async (args) => db.queryAny(db.delete(String(args.entity), args.id))
 		}
-	}) as (_: Cfg) => IOProviderPrimitive<S>
+	}) as (_: Cfg) => IOProvider<S>
 }
 
 export interface DbProvider {
