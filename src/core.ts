@@ -22,21 +22,8 @@ export function generateRepoGroupFn<S extends Schema, Cfg extends Obj | void = v
 		schema: S,
 		ioProvider?: (cfg: Cfg) => IOProvider<S>,
 		extensions?: (io: IOProvider<S>) => X
-	}): RepositoryGroup<Cfg, S, typeof args.extensions extends undefined ? undefined : X> {
+	}): (cfg: Cfg) => RepositoryGroup<S, typeof args.extensions extends undefined ? undefined : X> {
 
-
-	/*return class {
-		private cache: EntityCacheGroup<S>
-		private io: IOProvider<Cfg, S> | undefined
-		readonly CACHE_EXPIRATION_MILLISECONDS = 10 * 60 * 1000 // 10 minutes
-		readonly invalidOrStale = <T>(entry?: [T, number]) =>
-			(entry === undefined) || (new Date().getTime() - entry[1] > CACHE_EXPIRATION_MILLISECONDS)
-
-		constructor(config: Cfg) {
-			this.cache = objectFromTuples(keys(schema).map(e => new Tuple(e, ({ objects: {}, vectors: {} }))))
-			this.io = ioProvider ? ioProvider(config) : undefined
-		}
-	}*/
 
 	return (config: Cfg) => {
 		const cache: EntityCacheGroup<S> = objectFromTuples(keys(args.schema).map(e => new Tuple(e, ({
@@ -238,7 +225,6 @@ export function generateRepoGroupClass<S extends Schema, C extends Obj | void = 
 
 			const idFieldname = schema[entity].idField!
 			this._cache[entity].objects[String(obj[idFieldname])] = new Tuple(obj, new Date().getTime())
-
 		}
 
 		async updateAsync<E extends keyof S>(entity: E, obj: EntityType<S[E]>) {
@@ -467,17 +453,4 @@ const cats2 = new repoClass({ dbUrl: "" }).getAsync("categories", undefined, fal
 const x = new APIRepository({ baseUrl: "" }).getAsync("")
 */
 
-/* Cache system specification
-	If the option is enabled, a cache object will be created along with the repository group.
-	It stores the return values of calls to "getAsync" and "findAsync" functions, to return it faster when the same calls are made afterwards.
-	
-	### Entries insertion
-	A call to "findAsync" creates a "single" type cache entry, which stores a single entity.
-	A call to "getAsync" creates a "multiple" cache entry, which stores all entities returned by the function.
-	
-	### Entries invalidation
-	**Automatic**
-	When the saveAsync and deleteAsync functions are called, all cache entries related to the updated entity will be removed: its "single" type entry if present, and any "multiple" entries that included it in the results.
-	**Manual**
-	In addition, every repository exposes a "invalidateCache" function: it should be used to invalidate the cache when the underlying data changed without the "saveAsync" or "deleteAsync" methods involved. For instance, when the database where entities are stored was modified by another user.
-*/
+

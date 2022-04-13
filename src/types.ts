@@ -40,6 +40,9 @@ export type IOProvider<S extends Schema = Schema> = {
 	updateAsync: <E extends keyof S>(_: { entity: E, obj: EntityType<S[E]> }) => Promise<void>
 
 	deleteAsync: <E extends keyof S>(_: { entity: E, id: string }) => Promise<void>
+
+	/** Run a provider-specific operation */
+	runAsync: (operation: string, args: any) => Promise<any>
 }
 
 export interface RepositoryReadonly<T extends Obj> {
@@ -72,18 +75,18 @@ export interface Repository<T extends Obj /*& { id: string | number }*/> extends
 	deleteAsync: (id: string) => Promise<void>
 }
 
-export type RepositoryGroup<Cfg, S extends Schema, X extends Obj = {}> = (config: Cfg) => (
+export type RepositoryGroup<S extends Schema, X extends Obj = Obj<never>> = (
 	{
 		[key in keyof S]: (
 			S[key]["readonly"] extends false
 			? Repository<EntityType<S[key]>>
 			: RepositoryReadonly<EntityType<S[key]>>
 		)
-	} & {
+	} &
+	{
 		extensions: X
 	}
 )
-
 export type RepositoryGroupCtor<Cfg, S extends Schema, X extends Obj = {}> = {
 	new(config: Cfg): {
 		/** Get one entity object with a specific id from the underlying data-source
