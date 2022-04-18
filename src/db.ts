@@ -10,7 +10,7 @@ export function asIOProvider<S extends Schema, Cfg>(dbProvider: DbProviderCtor<C
 	return ((config: Cfg) => {
 		const db = new dbProvider(config)
 		return {
-			findAsync: async (args) => db.queryOne(db.select(String(args.entity), { fieldName: "id", operator: "equal", value: args.id })),
+			findAsync: async (args) => db.queryOne(db.select(String(args.entity), { fieldName: "id", operator: "equals", value: args.id })),
 			getAsync: async (args) => {
 				return db.queryMany(db.select(String(args.entity), args.filter as any))
 			},
@@ -58,18 +58,19 @@ export abstract class PostgresDbProvider implements DbProvider {
 
 	protected predicateTemplates(): Obj<undefined | ((x: DbPrimitive) => string), Required<Filter>["operator"]> {
 		return {
-			equal: x => hasValue(x) ? `= ${this.interpolatableValue(x)}` : `is NULL`,
-			not_equal: x => hasValue(x) ? `<> ${this.interpolatableValue(x)}` : `is not NULL`,
-			greater: x => hasValue(x) ? `> ${this.interpolatableValue(x)}` : `> NULL`,
-			less: x => hasValue(x) ? `< ${this.interpolatableValue(x)}` : `< NULL`,
-			greater_or_equal: x => hasValue(x) ? `>= ${this.interpolatableValue(x)}` : `>= NULL`,
-			less_or_equal: x => hasValue(x) ? `<= ${this.interpolatableValue(x)}` : `<= NULL`,
+			equals: x => hasValue(x) ? `= ${this.interpolatableValue(x)}` : `is NULL`,
+			not_equal_to: x => hasValue(x) ? `<> ${this.interpolatableValue(x)}` : `is not NULL`,
+			greater_than: x => hasValue(x) ? `> ${this.interpolatableValue(x)}` : `> NULL`,
+			less_than: x => hasValue(x) ? `< ${this.interpolatableValue(x)}` : `< NULL`,
+			greater_than_or_equals: x => hasValue(x) ? `>= ${this.interpolatableValue(x)}` : `>= NULL`,
+			less_than_or_equals: x => hasValue(x) ? `<= ${this.interpolatableValue(x)}` : `<= NULL`,
 			contains: x => hasValue(x) ? `like ${this.interpolatableValue('%' + String(x) + '%')}` : `like ${this.interpolatableValue('')}`,
 			ends_with: x => hasValue(x) ? `like ${this.interpolatableValue('%' + String(x))}` : `like ${this.interpolatableValue('')}`,
 			starts_with: x => hasValue(x) ? `like ${this.interpolatableValue(String(x))}` : `like ${this.interpolatableValue('')}`,
 			is_outlier_by: undefined,
-			blank: undefined,
-			"is-contained": undefined
+			is_blank: undefined,
+			is_contained_in: undefined,
+			"in": undefined
 		}
 	}
 
@@ -108,7 +109,7 @@ export abstract class PostgresDbProvider implements DbProvider {
 						const exprTemplate = this.predicateTemplates()[f.operator]
 						if (exprTemplate === undefined)
 							throw new Error(`SQL Filtering operator "${f.operator}"`)
-						return `${f.negated ? "NOT " : ""}${this.interpolatableColumnName(f.fieldName)} ${exprTemplate(f.value as DbPrimitive)}`
+						return `${f.negated ? "NOT " : ""}${this.interpolatableColumnName(f.fieldName)} ${exprTemplate("value" in f ? f.value as DbPrimitive : null as DbPrimitive)}`
 					}
 					else {
 						return `(${this.getWhereClause(f)})`
