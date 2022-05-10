@@ -63,7 +63,7 @@
 		"typescript": "^4.0.5"
 	},
 	"dependencies": {
-		"@agyemanjp/standard": "^4.0.1",
+		"@agyemanjp/standard": "^4.0.3",
 		"shortid": "^2.2.15"
 	}
 }
