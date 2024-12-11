@@ -8,7 +8,6 @@
 		"moduleDetection": "force",
 		"moduleResolution": "Bundler",
 		"allowJs": true,
-		// "allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"strict": true,
 		"strictNullChecks": true,
@@ -20,11 +19,9 @@
 		"noPropertyAccessFromIndexSignature": true,
 		"noUncheckedIndexedAccess": true,
 		"allowUnreachableCode": true,
-		// "noEmit": true,
+		"declaration": true,
 		"incremental": true,
-		"sourceMap": true,
-		// "preserveConstEnums": true,
-		// "experimentalDecorators": true,
+		"sourceMap": true
 	},
 	"include": [
 		"source",
