@@ -1,69 +1,66 @@
 {
 	"name": "@agyemanjp/storage",
 	"version": "1.5.2",
-	"description": "Datasource access through the repository pattern in Javascript/TypeScript",
+	"description": "Lightweight ORM based on user-defined table-valued functions, writen in TypeScript",
+	"type": "module",
+	"sideEffects": false,
 	"main": "index.js",
 	"types": "index.d.ts",
 	"files": [
-		"*",
-		"!*.tsbuildinfo"
+		"./*"
 	],
-	"scripts": {
-		"deps": "rm -rf ./node_modules package-lock.json && npm install",
-		"clean": "rm -rf dist/* .eslintcache *-report.json",
-		"lint": "eslint --ext ts --cache 'src/**'",
-		"lint-report": "eslint --ext ts --output-file .lint-report.json --format json-standard --cache 'src/**'",
-		"compile": "tsc",
-		"test": "mocha --require ts-node/register test/*.test.*",
-		"test-report": "mocha --require ts-node/register test/*.test.* --reporter mocha-reporter-json-standard >| .test-report.json",
-		"build": "run-s clean lint compile test",
-		"pubstage": "cp package.json LICENSE README.md dist",
-		"package": "npm run pubstage && cd dist && npm publish --dry-run && cd ..",
-		"version:patch": "npm version patch && git push --follow-tags",
-		"version:minor": "npm version minor && git push --follow-tags",
-		"version:major": "npm version major && git push --follow-tags",
-		"publish:patch": "run-s build version:patch pubstage && cd dist && npm publish --access public && cd ..",
-		"publish:minor": "run-s build version:minor pubstage && cd dist && npm publish --access public && cd ..",
-		"publish:major": "run-s build version:major pubstage && cd dist && npm publish --access public && cd .."
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/Hypothesize/storage.js.git"
-	},
 	"keywords": [
+		"ORM",
 		"repository",
 		"database",
 		"postgres",
 		"api",
-		"ORM"
+		"s3",
+		"TypeScript"
 	],
-	"author": "",
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/Hypothesize/storage.js/issues"
+	"author": {
+		"name": "James Prempeh",
+		"email": "agyemanjp@danfortsystems.com"
 	},
-	"homepage": "https://github.com/Hypothesize/storage.js#readme",
+	"license": "MIT",
+	"homepage": "https://github.com/agyemanjp/storage.js#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/agyemanjp/storage.js.git"
+	},
+	"bugs": {
+		"url": "https://github.com/agyemanjp/storage.js/issues"
+	},
 	"devDependencies": {
-		"@types/eslint": "^7.2.0",
-		"@types/mocha": "^7.0.2",
-		"@types/node": "^14.0.4",
-		"@types/request": "^2.48.5",
-		"@types/shortid": "0.0.29",
-		"@types/source-map-support": "^0.5.1",
-		"@typescript-eslint/eslint-plugin": "^5.20.0",
-		"@typescript-eslint/parser": "^5.20.0",
-		"eslint": "^8.13.0",
-		"eslint-formatter-json-standard": "^1.0.0",
-		"eslint-plugin-fp": "2.3.0",
-		"mocha": "^9.2.2",
-		"mocha-reporter-json-standard": "^1.0.0",
-		"npm-run-all": "^4.1.5",
-		"source-map-support": "^0.5.19",
-		"ts-node": "^10.7.0",
-		"typescript": "^4.0.5"
+		"@biomejs/biome": "1.9.4",
+		"@types/bun": "1.1.14",
+		"@types/source-map-support": "0.5.1",
+		"npm-run-all": "4.1.5",
+		"source-map-support": "0.5.19",
+		"typescript": "5.6.3"
 	},
 	"dependencies": {
-		"@agyemanjp/standard": "^4.0.3",
-		"shortid": "^2.2.15"
+		"@agyemanjp/http": "2.0.0",
+		"@agyemanjp/standard": "6.0.1",
+		"@aws-sdk/client-s3": "3.614.0",
+		"@paralleldrive/cuid2": "2.2.2",
+		"colors": "1.4.0",
+		"js-base64": "3.7.7",
+		"pg-promise": "11.9.1"
+	},
+	"scripts": {
+		"deps": "rm -rf ./node_modules bun.lockb && bun install",
+		"clean": "rm -rf dist tmp tsconfig.tsbuildinfo",
+		"typecheck": "tsc --noEmit",
+		"compile": "tsc --outDir tmp && mkdir -p dist && cp -r tmp/source/* dist && rm -rf tmp",
+		"test": "bun test",
+		"ver:patch": "npm version patch && git push --follow-tags",
+		"ver:minor": "npm version minor && git push --follow-tags",
+		"ver:major": "npm version major && git push --follow-tags",
+		"publish:stage": "cp package.json LICENSE README.md dist",
+		"publish:preview": "bun publish:stage && cd dist && bun publish --dry-run && cd ..",
+		"publish:patch": "run-s clean compile ver:patch publish:stage && cd dist && bun publish --access public && cd ..",
+		"publish:minor": "run-s clean compile ver:minor publish:stage && cd dist && bun publish --access public && cd ..",
+		"publish:major": "run-s clean compile ver:major publish:stage && cd dist && bun publish --access public && cd .."
 	}
 }
