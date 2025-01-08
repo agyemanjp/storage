@@ -82,7 +82,7 @@ export function getStorageProvider<T extends RecWithId = RecWithId, M extends Da
 					}
 
 					const vec = await (vectors[filtersKey] ?? [])[0] ?? []
-					console.log(`${io.identifier}: Cache vector length after get: ${vec.length}`)
+					// console.log(`${io.identifier}: Cache vector length after get: ${vec.length}`)
 
 					return ok(vec)
 				}
@@ -101,7 +101,7 @@ export function getStorageProvider<T extends RecWithId = RecWithId, M extends Da
 								[NO_FILTERS_KEY]: [
 									Promise.resolve(baseVector[0]).then(vector => {
 										const vec = [...vector, ..._objects]
-										console.log(`${io.identifier}: New cache vector length after insert: ${vec.length}`)
+										// console.log(`${io.identifier}: New cache vector length after insert: ${vec.length}`)
 										return vec
 									}),
 									baseVector[1]

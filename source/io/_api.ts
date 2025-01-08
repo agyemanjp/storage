@@ -47,35 +47,41 @@ export const ioFactoryForAPI: IOProviderFactory<ApiConfig> = (cfg) => {
 						})
 				},
 
-				insert: async (objects) => request
-					.post({
-						url: `${basePath}/${routePath}`,
-						headers: { secretAccessKey, clientId },
-						body: objects as JsonArray,
-						accept: "Json"
-					})
-					.then(_ => _.isOk()
-						? ok(_.value as T[])
-						: err(createStdError(_.error))
-					),
+				insert: async (objects) => {
+					return request
+						.post({
+							url: `${basePath}/${routePath}`,
+							headers: { secretAccessKey, clientId },
+							body: objects as JsonArray,
+							accept: "Json"
+						})
+						.then(_ => _.isOk()
+							? ok(_.value as T[])
+							: err(createStdError(_.error))
+						)
+				},
 
-				update: async (objects) => request
-					.put({
-						url: `${basePath}/${routePath}`,
-						headers: { secretAccessKey, clientId },
-						body: objects as JsonArray,
-						accept: "Json"
-					})
-					.then(_ => _.isOk() ? ok(_.value as T[]) : err(createStdError(_.error))),
+				update: async (objects) => {
+					return request
+						.put({
+							url: `${basePath}/${routePath}`,
+							headers: { secretAccessKey, clientId },
+							body: objects as JsonArray,
+							accept: "Json"
+						})
+						.then(_ => _.isOk() ? ok(_.value as T[]) : err(createStdError(_.error)))
+				},
 
-				remove: async (ids) => request
-					.get({
-						url: `${basePath}/${routePath}`,
-						headers: { secretAccessKey, clientId },
-						query: { ids: ids.join(",") },
-						accept: "Json"
-					})
-					.then(_ => _.isOk() ? ok(_.value as string[]) : err(createStdError(_.error))),
+				remove: async (ids) => {
+					return request
+						.delete({
+							url: `${basePath}/${routePath}`,
+							headers: { secretAccessKey, clientId },
+							query: { ids: ids.join(",") },
+							accept: "Json"
+						})
+						.then(_ => _.isOk() ? ok(_.value as string[]) : err(createStdError(_.error)))
+				},
 
 				identifier: `api-io-for-${entityName}`
 			})
